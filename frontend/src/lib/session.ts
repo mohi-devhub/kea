@@ -60,6 +60,8 @@ export function initSession(): () => void {
 export async function startRun(scenario: string, seed: number, speed: number): Promise<void> {
   state().clearRun();
   if (FIXTURE_MODE) return player.start(scenario, speed);
+  // one active run at a time: clear the previous run (both runs would call their incident INC-001)
+  await api.reset();
   await api.simulate(scenario, { seed, speed });
 }
 

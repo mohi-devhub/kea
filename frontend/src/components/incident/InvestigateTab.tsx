@@ -87,7 +87,7 @@ export function InvestigateTab() {
         <SectionLabel>Investigation</SectionLabel>
         <div className="flex items-center gap-1.5">
           <Badge tone={MODE_TONE[result.mode]}>{result.mode}</Badge>
-          <span className="num text-[11px] text-text-3">{result.provider}</span>
+          <span className="num text-[11px] text-text-3">{result.provider === "template" ? "template" : `${result.provider} / ${result.model}`}</span>
         </div>
       </div>
 

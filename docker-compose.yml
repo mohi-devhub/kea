@@ -19,6 +19,18 @@ services:
       retries: 20
       start_period: 10s
 
+  # Optional: watch the topics live. `docker compose --profile tools up -d redpanda-console`
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v3.12.0
+    profiles: ["tools"]
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+
   redpanda-init:
     image: docker.redpanda.com/redpandadata/redpanda:v26.2.3
     depends_on:

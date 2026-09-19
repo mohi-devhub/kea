@@ -1,0 +1,254 @@
+{
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "properties": {
+          "kafka": {
+            "title": "Kafka",
+            "type": "boolean"
+          },
+          "neo4j": {
+            "title": "Neo4J",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "kafka",
+          "neo4j"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "Layout": {
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Layout",
+        "type": "object"
+      },
+      "ScenarioInfo": {
+        "description": "Never includes ground truth.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fix_flow_available": {
+            "title": "Fix Flow Available",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "P0",
+              "P1"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "priority",
+          "fix_flow_available"
+        ],
+        "title": "ScenarioInfo",
+        "type": "object"
+      },
+      "ServiceNode": {
+        "properties": {
+          "customer_facing": {
+            "title": "Customer Facing",
+            "type": "boolean"
+          },
+          "health": {
+            "default": "healthy",
+            "enum": [
+              "healthy",
+              "degraded",
+              "failing"
+            ],
+            "title": "Health",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "service",
+              "database",
+              "cache"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "customer_facing",
+              "edge",
+              "internal",
+              "data"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "tier",
+          "layout",
+          "customer_facing"
+        ],
+        "title": "ServiceNode",
+        "type": "object"
+      },
+      "TopologyEdge": {
+        "properties": {
+          "blocking": {
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "blocking"
+        ],
+        "title": "TopologyEdge",
+        "type": "object"
+      },
+      "TopologyResponse": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/TopologyEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceNode"
+            },
+            "title": "Services",
+            "type": "array"
+          }
+        },
+        "required": [
+          "services",
+          "edges"
+        ],
+        "title": "TopologyResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "kea",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/scenarios": {
+      "get": {
+        "operationId": "scenarios_scenarios_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioInfo"
+                  },
+                  "title": "Response Scenarios Scenarios Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Scenarios"
+      }
+    },
+    "/topology": {
+      "get": {
+        "operationId": "topology_topology_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Topology"
+      }
+    }
+  }
+}

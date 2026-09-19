@@ -2,7 +2,7 @@
 
 import { X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import { HealthChip, SectionLabel } from "@/components/ui";
+import { Button, HealthChip, SectionLabel } from "@/components/ui";
 import { clock } from "@/lib/fmt";
 import { useKea } from "@/lib/store";
 
@@ -17,8 +17,9 @@ const LABEL: Record<string, string> = {
 const metricLabel = (metric: string) => LABEL[metric] ?? metric.replace(/_/g, " ");
 
 /**
- * Side drawer for the selected service. Subscribes to metricsLatest (the graph itself does not),
- * so live numbers update here without re-rendering the topology.
+ * Floating detail card for the selected service. Subscribes to metricsLatest (the graph itself does
+ * not), so live numbers update here without re-rendering the topology. Enters and leaves along the
+ * same path (right edge), transform and opacity only.
  */
 export function NodeDrawer() {
   const name = useKea((s) => s.selectedService);
@@ -60,47 +61,33 @@ export function NodeDrawer() {
       aria-label="Service details"
       aria-hidden={!open}
       inert={!open}
-      className="absolute inset-y-0 right-0 z-10 flex w-[280px] flex-col border-l border-line bg-surface"
+      className="absolute bottom-3 right-3 top-2 z-10 flex w-[280px] flex-col rounded-card border border-line bg-surface shadow-card"
       style={{
-        transform: open ? "translateX(0)" : "translateX(100%)",
+        transform: open ? "translateX(0)" : "translateX(calc(100% + 16px))",
         opacity: open ? 1 : 0,
         transition: "transform 200ms var(--ease-drawer), opacity 200ms var(--ease-drawer)",
       }}
     >
       <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-[14px] font-medium">{shown}</h2>
-          <p className="text-[12px] text-text-3">
-            {def ? `${def.kind}, ${def.tier.replace("_", " ")}` : ""}
-          </p>
+        <div className="min-w-0 space-y-1">
+          <h2 className="truncate text-[15px] font-medium text-text">{shown}</h2>
+          <p className="text-[12px] text-text-3">{def ? `${def.kind}, ${def.tier.replace("_", " ")}` : ""}</p>
+          <HealthChip health={(shown && health[shown]) || def?.health || "healthy"} />
         </div>
-        <button
-          ref={closeRef}
-          type="button"
-          aria-label="Close details"
-          onClick={() => select(null)}
-          className="pressable inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-2 [@media(hover:hover)]:hover:bg-surface-2 [@media(hover:hover)]:hover:text-text"
-        >
+        <Button ref={closeRef} variant="ghost" size="icon" aria-label="Close details" onClick={() => select(null)}>
           <X size={16} weight="bold" />
-        </button>
+        </Button>
       </div>
 
-      <div className="scroll-quiet flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
-        <section className="flex flex-col gap-1.5">
-          <SectionLabel>Health</SectionLabel>
-          <div>
-            <HealthChip health={(shown && health[shown]) || def?.health || "healthy"} />
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-1.5">
+      <div className="scroll-quiet flex min-h-0 flex-1 flex-col divide-y divide-line overflow-y-auto">
+        <section className="flex flex-col gap-1.5 px-4 py-3">
           <SectionLabel>Active anomalies</SectionLabel>
           {active.length === 0 ? (
             <p className="text-[13px] text-text-3">No active anomalies.</p>
           ) : (
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col gap-2">
               {active.map((a) => (
-                <li key={a.anomaly_id} className="text-[13px]">
+                <li key={a.anomaly_id} className="text-[13px] text-text">
                   {metricLabel(a.metric)} <span className="num text-warn">{a.ratio.toFixed(1)}x</span> baseline
                   <span className="block text-[12px] text-text-3">
                     since <span className="num">{clock(a.onset_ts)}</span>
@@ -111,14 +98,14 @@ export function NodeDrawer() {
           )}
         </section>
 
-        <section className="flex flex-col gap-1.5">
+        <section className="flex flex-col gap-1.5 px-4 py-3">
           <SectionLabel>Recent deployments</SectionLabel>
           {recent.length === 0 ? (
             <p className="text-[13px] text-text-3">No recent deployments.</p>
           ) : (
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col gap-2">
               {recent.map((e) => (
-                <li key={e.event_id} className="text-[13px]">
+                <li key={e.event_id} className="text-[13px] text-text">
                   <span className="num">{String(e.payload.deployment_id ?? "")}</span>
                   {e.kind === "rollback" ? <span className="text-ok"> rolled back</span> : ` ${String(e.payload.version ?? "")}`}
                   <span className="block text-[12px] text-text-3">
@@ -131,16 +118,16 @@ export function NodeDrawer() {
           )}
         </section>
 
-        <section className="flex flex-col gap-1.5">
+        <section className="flex flex-col gap-1.5 px-4 py-3">
           <SectionLabel>Latest metrics</SectionLabel>
           {values.length === 0 ? (
             <p className="text-[13px] text-text-3">No metrics yet.</p>
           ) : (
-            <dl className="flex flex-col gap-1">
+            <dl className="flex flex-col gap-1.5">
               {values.map((m) => (
                 <div key={m.metric} className="flex items-baseline justify-between gap-3 text-[13px]">
                   <dt className="text-text-2">{metricLabel(m.metric)}</dt>
-                  <dd className="num">
+                  <dd className="num text-text">
                     {Number(m.value.toPrecision(3))}
                     {UNIT[m.metric] ?? ""}
                   </dd>

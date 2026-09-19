@@ -70,13 +70,11 @@ export function FactorBar({ candidate }: { candidate: Candidate }) {
             onPointerLeave={() => setActive(null)}
           >
             <span aria-hidden className="mt-[6px] h-2 w-2 rounded-full" style={{ background: FACTOR_COLOR[r.key] }} />
-            <span className="min-w-0">
-              <span className="block text-[13px] font-medium leading-5 text-text">{FACTOR_LABEL[r.key]}</span>
-              <span className="block text-[12px] leading-snug text-text-2">{r.factor.explanation}</span>
-            </span>
-            <span className="num whitespace-nowrap pt-0.5 text-[12px] leading-5 text-text-3">
+            <span className="block text-[13px] font-medium leading-5 text-text">{FACTOR_LABEL[r.key]}</span>
+            <span className="num whitespace-nowrap text-[12px] leading-5 text-text-3">
               {fixed(r.factor.value)} x {fixed(r.factor.weight)} = <span className="text-text">{fixed(r.factor.contribution, 4)}</span>
             </span>
+            <span className="col-span-2 col-start-2 block text-[12px] leading-snug text-text-2">{r.factor.explanation}</span>
           </li>
         ))}
       </ul>

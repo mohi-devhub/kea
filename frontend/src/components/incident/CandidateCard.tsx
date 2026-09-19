@@ -51,7 +51,7 @@ export function CandidateCard({
             {candidate.rank}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-medium leading-6 text-text">{candidateLabel(candidate)}</span>
+            <span className="block text-[14px] font-medium leading-5 text-text">{candidateLabel(candidate)}</span>
             {candidate.rank === 1 && margin !== null && (
               <span className="num block text-[12px] text-text-3">margin over runner-up {fixed(margin)}</span>
             )}

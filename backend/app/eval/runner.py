@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -146,7 +147,9 @@ class EvalRunner:
         hybrid_seeds: set[int] | None = None,
         baseline_provider: LLMProvider | None = None,
         agent_provider: LLMProvider | None = None,
+        events_for: Callable[[Any, int], list[Any]] | None = None,
     ) -> tuple[dict[str, Any], list[RunRecord]]:
+        make_events = events_for or (lambda scenario, seed: generate(scenario, self.topology, seed))
         records: list[RunRecord] = []
         prompt_dir: dict[str, str] = {
             "baseline_prompt_version": BASELINE_PROMPT_VERSION,
@@ -154,7 +157,7 @@ class EvalRunner:
         }
         for scenario in scenarios:
             for seed in seeds:
-                events = generate(scenario, self.topology, seed)
+                events = make_events(scenario, seed)
                 engine_started = time.perf_counter()
                 engine_result = run_batch(events, InMemoryTopology(self.topology))
                 engine_ms = (time.perf_counter() - engine_started) * 1000

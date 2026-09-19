@@ -95,8 +95,9 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_FIXTURE_MODE: ${NEXT_PUBLIC_FIXTURE_MODE:-0}
     depends_on:
       api:
         condition: service_healthy

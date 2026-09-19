@@ -5,6 +5,10 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+# Next inlines NEXT_PUBLIC_* at build time, so they are build args, not runtime env
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_FIXTURE_MODE=0
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL NEXT_PUBLIC_FIXTURE_MODE=$NEXT_PUBLIC_FIXTURE_MODE
 COPY frontend ./
 RUN pnpm build
 

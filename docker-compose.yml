@@ -73,6 +73,16 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
       RUN_WORKER_IN_API: "false"
+      # LLM: values come from the host .env at run time; the key is never baked into an image
+      LLM_PROVIDER: ${LLM_PROVIDER:-template}
+      LLM_MODEL: ${LLM_MODEL:-CHANGE_ME}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-low}
+      LLM_CACHE_MODE: ${LLM_CACHE_MODE:-off}
+      LLM_CACHE_DIR: /data/llm-cache
+      AUTO_INVESTIGATE: ${AUTO_INVESTIGATE:-true}
+    volumes:
+      - ./.llm-cache:/data/llm-cache
     depends_on:
       redpanda:
         condition: service_healthy

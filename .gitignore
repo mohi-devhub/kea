@@ -16,3 +16,4 @@ node_modules/
 .claude/
 skills-lock.json
 frontend/AGENTS.md
+.llm-cache/

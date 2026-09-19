@@ -1,75 +1,86 @@
-# kea UI design brief
+# Design System: kea (incident causality dashboard)
 
-Single source of truth for every UI contributor. Direction: **calm, dense, warm-monochrome ops
-dashboard**, dark by default (projector demo), light via `<html data-theme="light">`.
-Dials: variance 3, motion 3, density 7. Built from the `minimalist-ui`, `design-taste-frontend`,
-`dataviz` and `emil-design-eng` skills, adapted for a dashboard (their landing-page composition
-rules do not apply; their palette, restraint, state, motion and accessibility rules do).
+Source of truth for every UI contributor. The visual language is copied from the reference dashboard
+the owner chose (context.dev usage and overview pages), with tokens read from its public CSS: **IBM Plex
+Sans and IBM Plex Mono**, the Tailwind gray scale, one blue accent, 14px cards with a soft small shadow.
+The topology graph follows the owner's Obsidian graph-view reference. Tools: `minimalist-ui`,
+`design-taste-frontend`, `dataviz`, `emil-design-eng`, `redesign-existing-projects`,
+`stitch-design-taste`. When a skill conflicts with the reference or with the product principles, the
+reference and the principles win.
 
-## Non-negotiables (from UI_SPEC section 1, they beat any skill)
-1. Scores are never a probability: show `0.82`, never a percent, never the word "confidence". Footnote:
-   "Heuristic score, not a probability."
-2. Every LLM-derived block has a `LIVE` / `REPLAYED` / `TEMPLATE` badge; fixture playback shows a
-   persistent `FIXTURE REPLAY` banner.
-3. Color is never the only signal: health = color + icon + text.
-4. Ambiguity is shown ("Multiple plausible hypotheses", with the margin).
-5. Everything shown is traceable: candidate -> factors -> chain -> evidence.
+## 1. Visual theme and atmosphere
+A calm, light, high-clarity operations dashboard. White cards float on a very light gray page; structure
+comes from generous rounding, 1px hairlines and one soft shadow. Density is moderate-high (7/10) but
+never cramped: 16px card padding, 16px gaps. Variance low (3/10, a predictable sidebar plus grid),
+motion restrained (3/10). **Light is the default**; dark (`<html data-theme="dark">`) is a deep
+blue-black with dark navy cards and no shadows.
 
-## Tokens (`src/app/globals.css`, use the Tailwind names: `bg-surface`, `text-text-2`, `border-line`)
-- Surfaces: `bg` page, `surface` panels, `surface-2` raised or hovered. Text: `text`, `text-2`, `text-3`.
-- Structure comes from 1px `border-line`. **No shadows, no gradients, no glass.** No pure black or white.
-- One accent (`accent`, `accent-bg`) for selection, focus, links. Health and severity only use
-  `ok / warn / bad` (+ `-bg`). Nothing else is colored.
-- Radii, one system: cards and panels 8px (`rounded-card`), controls and inputs 6px
-  (`rounded-control`), badges and health chips full. Buttons: solid `btn` on `btn-text`, no shadow.
-- Type: Geist (UI) and Geist Mono (ids, scores, times, Cypher). Sizes 12 / 14 / 16 / 20. Numbers, ids,
-  timestamps use the `.num` class (mono, tabular). Body 14px, labels 12px. No serif, no Inter.
-- Icons: **Phosphor only** (`@phosphor-icons/react`), `weight="bold"`, size 14 or 16. Never hand-drawn
-  SVG paths, never emoji, never Lucide.
-- Copy: plain and specific. **No em-dashes or en-dashes in visible text** (use a hyphen, comma or period).
-  No "seamless / elevate / unleash". Sentences a stranger understands ("Healthy until 10:05:40").
+## 2. Color roles (tokens live in `src/app/globals.css`, use the Tailwind names)
+| Role | Light | Dark | Use |
+|---|---|---|---|
+| `bg` | #f7f7f8 | #0a0b10 | page |
+| `surface` | #ffffff | #14161f | cards, panels |
+| `surface-2` | #f3f4f6 | #1c1f2b | active tab pill, hover rows, recessed tracks |
+| `line`, `line-strong` | #e5e7eb, #d1d5dc | #232736, #323750 | 1px borders |
+| `text`, `text-2`, `text-3` | #101828, #4a5565, #6a7282 | #f3f4f6, #a3aab8, #7a8194 | primary, secondary, muted |
+| `accent` | #2563eb | #6ea8ff | links, focus, selection |
+| `btn` | #3080ff | #3080ff | primary button and progress fills, white text |
+| `ok / warn / bad` | #067647 / #b54708 / #b42318 | #4ade9c / #fdb022 / #f97066 | **text and icons** (AA contrast) |
+| `ok-fill / warn-fill / bad-fill` | #17b26a / #f79009 / #f04438 | #32d583 / #fdb022 / #f97066 | **dots, bars, node fills** |
+| `f1..f4` | #2a78d6 #eb6834 #1baf7a #eda100 | #3987e5 #d95926 #199e70 #c98500 | factor series, fixed order (validated with the dataviz validator) |
+Only health, severity and the four factor series use color besides the blue accent. No gradients,
+no purple, no pure black or white text on backgrounds.
 
-## Layout (1440x900 primary, 1920x1080 secondary, no page scroll)
-Header 48px. Body is a grid: left column (topology graph fills, timeline fixed 240px) and right column
-(incident panel 480px, scrolls inside itself with `.scroll-quiet`). Panels are `bg-surface` with a 1px
-border and 8px radius, 12px gap between them. Density is high: 12px labels, 8 and 12px paddings inside
-cards (16px only on the outer panel), hairline dividers instead of nested boxes. Never a card inside a
-card; group with `border-t` and spacing.
+## 3. Typography
+- **IBM Plex Sans** for everything: 14px body, 13px controls, 12px labels, 15px card titles, 26px stat
+  values (medium), 30px page title (light 300, tracking -0.02em, centered).
+- **IBM Plex Mono** (`.num`) for numbers, ids, times, Cypher, legends and small section pills.
+- Sentence case. Uppercase only for the tiny Badge labels and mono section pills. No em-dashes or
+  en-dashes in visible text. No emoji. No "seamless / elevate / unleash".
 
-## Data visualization (dataviz skill)
-- **Factor breakdown** is one thin horizontal stacked bar per candidate: four segments whose widths are
-  each factor's `contribution`, in fixed order (timing `--f1`, explains `--f2`, strength `--f3`, impact
-  `--f4`), 2px surface gaps between segments, 4px rounded ends, total = the score, printed as `0.82`.
-  Under it, four rows: color swatch, label, `value x weight = contribution` in mono. Labels and values
-  are always visible (the light-theme aqua and yellow are under 3:1, so this is required). The palette
-  was run through `validate_palette.js` for both themes; do not swap colors without re-running it.
-- Text wears text tokens, never the series color. Status colors are reserved for health and verdicts and
-  always ship with an icon and a word.
-- Sparklines or counters (P2 charts) use one hue, 2px line, no fill, no grid.
-- Tooltips and hover: every mark with a value has a hover or focus tooltip; hit targets bigger than marks.
+## 4. Components (all in `src/components/ui.tsx`)
+- **Card / Panel:** white, 1px `line` border, 14px radius (`rounded-card`), `shadow-card` (none in dark).
+- **CardHeader + IconTile:** a 40px icon inside four corner brackets, a 15px medium title, right-aligned
+  metric or controls. Every card that shows data has one.
+- **Segmented:** pill tabs, active = `surface-2` fill, inactive = muted text; arrow keys move selection.
+- **StatCard:** label, 26px value, mono-free caption, optional thin progress bar (blue on `surface-2`).
+- **Button:** 34px tall, 8px radius (`rounded-control`). Primary = blue fill, white text. Secondary =
+  white with border and shadow. Ghost = text only. Press feedback scale(0.97) via `.pressable`.
+- **Badge:** small pill with a soft tinted background and tone text. **SectionPill:** mono uppercase
+  outlined label that names a group in the sidebar ("RUN", "VIEW").
+- **LegendDot:** 6px dot plus mono text, as in the reference chart legends.
+- **HealthChip:** icon + word + tone (never color alone).
 
-## Motion (emil-design-eng)
-- Animate only `transform` and `opacity`. Durations 120-220ms, UI easing `var(--ease-out)`. Never ease-in,
-  never `transition: all`, never `scale(0)` (start at 0.95 with opacity).
-- Never animate keyboard-initiated or high-frequency things (timeline row arrivals, tab switches,
-  metric ticks). Panels and drawers: 200ms `--ease-drawer`. Popovers are origin-aware.
-- Press feedback: add the `.pressable` class to every button (scale 0.97 on press). Hover styles live in
-  `@media (hover: hover)` only.
-- The **only** looping animation is the causal-path pulse (`.kea-pulse`). Everything honors
-  `prefers-reduced-motion` (globals already collapse durations; pulse becomes static emphasis).
-- Use CSS transitions (interruptible), not keyframes, for state changes.
+## 5. Layout (1440x900 primary, no page scroll)
+Left sidebar 248px (brand, RUN controls, VIEW nav, status card, theme switch). Content column: centered
+page title and subtitle, a row of four stat cards, then a grid of [topology card over timeline card] and
+[incident card 440px] that fills the rest. Long content scrolls inside its own card (`.scroll-quiet`).
+Radii: cards 14, controls 8, pills full. Spacing scale 4/8/12/16/24.
 
-## States (every surface needs all of them)
-Loading = skeleton in the final shape (no spinners for panels). Empty = a sentence that says how to
-populate it ("Pick a scenario and press Start."). Error = inline and contextual, toasts only for transient
-failures. Disconnected = a banner "Reconnecting...".
+## 6. Topology graph (Obsidian-style)
+Round nodes sized by degree, filled with the health fill color, a soft halo, a white health icon inside,
+the name and a health word beneath, thin neutral bezier edges with small arrowheads (non-blocking
+dashed), a faint dot grid behind. Hover or focus a node to highlight its neighbors and dim the rest.
+Fixed layout coordinates (deterministic), no physics, no pan or zoom.
 
-## Accessibility
-WCAG AA text contrast in both themes. Visible `:focus-visible` ring (global). All controls reachable by
-keyboard; graph nodes are buttons with accessible names ("payment, failing"). Icons that carry meaning
-have text beside them or an `aria-label`. Respect reduced motion. No hover-only information.
+## 7. Data visualization (dataviz)
+Factor breakdown = one thin stacked bar (segment width = contribution, fixed order, 2px gaps, 4px round
+ends) plus four labeled rows with `value x weight = contribution` in mono. Labels and values are always
+visible (light aqua and yellow are under 3:1). Text never wears series colors. Status colors are
+reserved and always carry an icon and a word.
 
-## Definition of done for a component
-Both themes checked. Keyboard path works. Empty, loading and error states exist. No em-dash, emoji,
-percent-on-score, or the word "confidence". `pnpm lint` and `pnpm typecheck` clean. No `any` in
-contract types. No `setState` on a hot path that re-renders the graph (metric batches must not).
+## 8. Motion (emil-design-eng)
+Only transform and opacity, 120-220ms, `--ease-out` or `--ease-drawer`, never ease-in, never
+`transition: all`, never from scale(0). No animation on keyboard or high-frequency updates (timeline
+rows, metric ticks, tab changes). Hover only under `@media (hover: hover)`. The one looping animation is
+the causal-path pulse. Everything honors `prefers-reduced-motion`.
+
+## 9. States and accessibility
+Every surface has loading (skeleton in the final shape), empty (says how to populate), and error (inline)
+states. WCAG AA in both themes, visible focus ring, keyboard access everywhere, meaningful icons carry a
+text label. Product principles: scores are never probabilities (no percent, never "confidence"), every
+LLM block is badged LIVE / REPLAYED / TEMPLATE, fixture replay shows a persistent banner.
+
+## 10. Banned
+Inter, serif faces, pure black, neon glows, gradients, emoji, hand-drawn icon paths, cards inside cards,
+three-equal-column feature rows, generic names, fake round numbers, filler UI text.

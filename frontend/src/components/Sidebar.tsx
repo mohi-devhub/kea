@@ -4,7 +4,7 @@ import { ArrowCounterClockwise, ArrowUUpLeft, ChartBar, Graph, Moon, Play, Squar
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Button, cx, Panel, SectionPill, Segmented } from "@/components/ui";
+import { Button, cx, Panel, SectionPill } from "@/components/ui";
 import { clock } from "@/lib/fmt";
 import { errorText, recoverRun, resetAll, startRun } from "@/lib/session";
 import { selectCanRecover, useKea } from "@/lib/store";
@@ -110,11 +110,38 @@ function RunControls() {
   );
 }
 
+/** Two-state theme switch: a recessed track with a raised white thumb on the active side. */
+function ThemeSwitch() {
+  const [theme, setTheme] = useTheme();
+  const items = [
+    { value: "light" as const, label: "Light", Icon: Sun },
+    { value: "dark" as const, label: "Dark", Icon: Moon },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Theme" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1">
+      {items.map(({ value, label, Icon }) => (
+        <button
+          key={value}
+          role="radio"
+          aria-checked={theme === value}
+          onClick={() => setTheme(value)}
+          className={cx(
+            "pressable flex h-8 items-center justify-center gap-1.5 rounded-md text-[13px] font-medium",
+            theme === value ? "bg-surface text-text shadow-card" : "text-text-3 [@media(hover:hover)]:hover:text-text",
+          )}
+        >
+          <Icon size={14} weight="bold" aria-hidden />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function StatusCard() {
   const conn = useKea((s) => s.conn);
   const mode = useKea((s) => s.mode);
   const simTs = useKea((s) => s.simTs);
-  const [theme, setTheme] = useTheme();
   const ok = conn === "connected" || conn === "fixture";
   const label = { connecting: "Connecting", connected: "Connected", reconnecting: "Reconnecting", fixture: "Fixture replay" }[conn];
   return (
@@ -132,16 +159,7 @@ function StatusCard() {
           <span className="num text-text">{simTs ? clock(simTs) : "--:--:--"}</span>
         </div>
       </Panel>
-      <Segmented
-        label="Theme"
-        value={theme}
-        onChange={setTheme}
-        options={[
-          { value: "light", label: <Sun size={15} weight="bold" aria-label="Light theme" /> },
-          { value: "dark", label: <Moon size={15} weight="bold" aria-label="Dark theme" /> },
-        ]}
-        className="w-full [&>button]:flex-1 [&>button]:justify-center"
-      />
+      <ThemeSwitch />
     </div>
   );
 }

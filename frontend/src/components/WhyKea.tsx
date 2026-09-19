@@ -1,89 +1,170 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { BarChart, LineChart, SERIES, type BarGroup } from "@/components/charts";
+import { useState } from "react";
+import { ChartCard, ColumnChart, HBarChart, LineChart, SERIES, type BarGroup } from "@/components/charts";
 import { Panel, Segmented } from "@/components/ui";
 import type { EvalAggregate, EvalReport } from "@/lib/types";
 
 const APPROACHES = ["engine", "llm_raw", "llm_raw_topology"];
 const SCENARIO_LABEL: Record<string, string> = {
-  s1_bad_deploy_payment: "S1 bad deploy",
-  s2_postgres_degradation: "S2 database fault",
-  s3_red_herring_deploy: "S3 decoy deploy",
-  s4_benign_deploy: "S4 healthy deploy",
+  s1_bad_deploy_payment: "S1 Bad deploy",
+  s2_postgres_degradation: "S2 Database fault",
+  s3_red_herring_deploy: "S3 Decoy deploy",
+  s4_benign_deploy: "S4 Healthy deploy",
 };
-const pct = (v: number) => `${Math.round(v * 100)}%`;
-const rate = (m: { k: number; n: number }) => (m.n ? m.k / m.n : 0);
-const find = (rows: EvalAggregate[], approach: string, scenario: string) => rows.find((r) => r.approach === approach && r.scenario === scenario);
-
-function byScenario(rows: EvalAggregate[], pick: (r: EvalAggregate) => { k: number; n: number }, only?: (s: string) => boolean): BarGroup[] {
-  const scenarios = [...new Set(rows.map((r) => r.scenario))].filter((s) => (only ? only(s) : true));
-  return scenarios.map((scenario) => ({
-    label: SCENARIO_LABEL[scenario] ?? scenario,
-    bars: APPROACHES.flatMap((approach) => {
-      const row = find(rows, approach, scenario);
-      if (!row || !row.n) return [];
-      const m = pick(row);
-      return [{ series: approach, value: rate(m), text: `${m.k}/${m.n}`, detail: `${SERIES[approach].label}: ${m.k} of ${m.n} (${pct(rate(m))})` }];
-    }),
-  }));
-}
-
 const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss" };
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+const fmtMs = (ms: number | null) => (ms == null ? "n/a" : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
+const find = (rows: EvalAggregate[], approach: string, scenario: string) => rows.find((r) => r.approach === approach && r.scenario === scenario);
+type Frac = { k: number; n: number };
+const sum = (rows: EvalAggregate[], approach: string, pick: (r: EvalAggregate) => Frac, only: (s: string) => boolean): Frac =>
+  rows.filter((r) => r.approach === approach && only(r.scenario)).reduce((a, r) => ({ k: a.k + pick(r).k, n: a.n + pick(r).n }), { k: 0, n: 0 });
+const frac = (m: Frac) => (m.n ? `${m.k}/${m.n}` : "not run");
+const barOf = (approach: string, m: Frac) => ({ series: approach, value: m.n ? m.k / m.n : 0, text: frac(m), detail: `${SERIES[approach].label}: ${m.k} of ${m.n} (${m.n ? pct(m.k / m.n) : "n/a"})` });
 
-function rcaGroups(rca: NonNullable<EvalReport["rcaeval"]>): BarGroup[] {
-  const faults = Object.keys(FAULT_LABEL);
-  const bar = (approach: string, fs: string[]) => {
-    const cells = fs.map((f) => rca.by_fault[approach]?.[f] ?? [0, 0]);
-    const k = cells.reduce((a, c) => a + c[0], 0);
-    const n = cells.reduce((a, c) => a + c[1], 0);
-    return { series: approach, value: n ? k / n : 0, text: `${k}/${n}`, detail: `${SERIES[approach].label}: ${k} of ${n}` };
+const SHORT: Record<string, string> = { engine: "kea engine", llm_raw: "LLM raw", llm_raw_topology: "LLM topology" };
+const isS4 = (s: string) => s.startsWith("s4");
+
+/** One table, kea highlighted, the headline numbers in a single glance. */
+export function CompareTable({ report }: { report: EvalReport }) {
+  const rows = report.results;
+  const cost = report.consistency?.cost ?? report.cost;
+  const agree = (a: string) => {
+    if (a === "engine") return report.consistency ? 1 : null;
+    const values = (report.consistency?.results ?? []).filter((r) => r.approach === a).map((r) => (r.extra.consistency as { agreement: number } | undefined)?.agreement);
+    const nums = values.filter((v): v is number => v != null);
+    return nums.length ? nums.reduce((x, y) => x + y, 0) / nums.length : null;
   };
-  return [{ label: "All faults", fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], fs: [f] }))].map(({ label, fs }) => ({
-    label,
-    bars: APPROACHES.filter((a) => rca.by_fault[a]).map((a) => bar(a, fs)),
-  }));
-}
-
-type Tone = "ok" | "warn" | "neutral";
-const TONE_CLASS: Record<Tone, string> = { ok: "text-ok", warn: "text-warn", neutral: "text-text-2" };
-
-function Tile({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: Tone }) {
+  const rca = (a: string): Frac => Object.values(report.rcaeval?.by_fault[a] ?? {}).reduce((t, [k, n]) => ({ k: t.k + k, n: t.n + n }), { k: 0, n: 0 });
+  type Row = { name: string; sub: string; cells: Record<string, string | null>; loses?: boolean };
+  const data: Row[] = [
+    { name: "Root cause found", sub: "Simulated incidents S1 to S3, top-1", cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(sum(rows, a, (r) => r.top1_correct, (s) => !isS4(s)))])) },
+    { name: "False alarms", sub: "Healthy deploy S4, lower is better", cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(sum(rows, a, (r) => r.false_alarm, isS4))])) },
+    { name: "Same answer twice", sub: "Same input five times, average over scenarios", cells: Object.fromEntries(APPROACHES.map((a) => [a, agree(a) == null ? null : pct(agree(a) as number)])) },
+    { name: "Median latency", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? fmtMs(cost[a].median_latency_ms) : null])) },
+    { name: "Tokens", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? (cost[a].median_tokens ?? 0).toLocaleString() : null])) },
+  ];
+  if (report.rcaeval) data.push({ name: "Root cause found", sub: "Real data, RCAEval, 25 cases", loses: true, cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(rca(a))])) });
   return (
-    <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-      <div className="text-[12px] text-text-3">{label}</div>
-      <div className={`mt-1 font-mono text-[22px] font-light tabular-nums tracking-[-0.02em] ${TONE_CLASS[tone]}`}>{value}</div>
-      <div className="mt-0.5 text-[12px] leading-snug text-text-2">{sub}</div>
+    <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
+      <table className="w-full min-w-[680px] border-collapse text-left">
+        <thead>
+          <tr>
+            <th className="w-[34%] px-5 py-3" />
+            {APPROACHES.map((a) => (
+              <th key={a} className={`px-4 py-3 text-[14px] font-medium text-text ${a === "engine" ? "bg-accent-bg" : ""}`}>{SERIES[a].label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row) => (
+            <tr key={row.name + row.sub} className="border-t border-line align-top">
+              <th scope="row" className="px-5 py-3 text-left font-normal">
+                <div className="text-[14px] font-medium text-text">{row.name}</div>
+                <div className="text-[12px] text-text-3">{row.sub}</div>
+              </th>
+              {APPROACHES.map((a) => (
+                <td key={a} className={`px-4 py-3 ${a === "engine" ? "bg-accent-bg" : ""}`}>
+                  <span className={`font-mono text-[15px] tabular-nums ${row.loses && a === "engine" ? "text-warn" : "text-text"} ${a === "engine" ? "font-medium" : ""}`}>{row.cells[a] ?? "-"}</span>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-const sum = (rows: EvalAggregate[], approach: string, pick: (r: EvalAggregate) => { k: number; n: number }, only: (s: string) => boolean) =>
-  rows.filter((r) => r.approach === approach && only(r.scenario)).reduce((a, r) => ({ k: a.k + pick(r).k, n: a.n + pick(r).n }), { k: 0, n: 0 });
+type ChartTab = "accuracy" | "consistency" | "cost" | "scale" | "real";
 
-/** The five headline claims, each computed from the data, with the losing one shown in amber. */
-export function Verdicts({ report }: { report: EvalReport }) {
+/** Pill tabs switch which figure is shown, one framed chart at a time with its note underneath. */
+export function ResultCharts({ report }: { report: EvalReport }) {
+  const [tab, setTab] = useState<ChartTab>("accuracy");
+  const [table, setTable] = useState(false);
   const rows = report.results;
-  const isS4 = (s: string) => s.startsWith("s4");
-  const notS4 = (s: string) => !isS4(s);
-  const alarm = (a: string) => sum(rows, a, (r) => r.false_alarm, isS4);
-  const acc = (a: string) => sum(rows, a, (r) => r.top1_correct, notS4);
   const cost = report.consistency?.cost ?? report.cost;
-  const agreement = Math.min(
-    ...(report.consistency?.results ?? []).filter((r) => r.approach !== "engine").map((r) => (r.extra.consistency as { agreement: number } | undefined)?.agreement ?? 1),
-  );
+  const scale = report.scale;
   const rca = report.rcaeval;
-  const rcaSum = (a: string) => Object.values(rca?.by_fault[a] ?? {}).reduce((t, [k, n]) => [t[0] + k, t[1] + n], [0, 0]);
-  const frac = (m: { k: number; n: number }) => `${m.k}/${m.n}`;
+  const options: { value: ChartTab; label: string; disabled?: boolean }[] = [
+    { value: "accuracy", label: "Accuracy and false alarms" },
+    { value: "consistency", label: "Repeatability", disabled: !report.consistency },
+    { value: "cost", label: "Cost and speed", disabled: !cost },
+    { value: "scale", label: "Scale", disabled: !scale?.points.length },
+    { value: "real", label: "Real data", disabled: !rca },
+  ];
+  const scenarios = [...new Set(rows.map((r) => r.scenario))];
+  const accuracyGroups: BarGroup[] = scenarios.map((s) => ({ label: SCENARIO_LABEL[s] ?? s, bars: APPROACHES.flatMap((a) => { const r = find(rows, a, s); return r && r.n ? [barOf(a, r.top1_correct)] : []; }) }));
+  const alarmGroups: BarGroup[] = APPROACHES.flatMap((a) => { const m = sum(rows, a, (r) => r.false_alarm, isS4); return m.n ? [{ label: SHORT[a], bars: [barOf(a, m)] }] : []; });
+  const consistencyGroups: BarGroup[] = [...new Set((report.consistency?.results ?? []).map((r) => r.scenario))].map((s) => ({
+    label: SCENARIO_LABEL[s] ?? s,
+    bars: APPROACHES.flatMap((a) => {
+      const row = find(report.consistency?.results ?? [], a, s);
+      if (a === "engine") return row ? [{ series: a, value: 1, text: "100%", detail: "Deterministic: identical input gives identical output" }] : [];
+      const c = row?.extra.consistency as { agreement: number } | undefined;
+      return c ? [{ series: a, value: c.agreement, text: pct(c.agreement) }] : [];
+    }),
+  }));
+  const costGroups = (pick: (c: NonNullable<typeof cost>[string]) => number): BarGroup[] =>
+    APPROACHES.filter((a) => cost?.[a]).map((a) => ({ label: SERIES[a].label, bars: [{ series: a, value: pick((cost as NonNullable<typeof cost>)[a]), text: "" }] }));
+  const latency = costGroups((c) => (c.median_latency_ms ?? 0) / 1000).map((g) => ({ ...g, bars: g.bars.map((b) => ({ ...b, text: fmtMs(b.value * 1000) })) }));
+  const tokens = costGroups((c) => c.median_tokens ?? 0).map((g) => ({ ...g, bars: g.bars.map((b) => ({ ...b, text: b.value.toLocaleString() })) }));
+  const lines = (pick: (p: NonNullable<typeof scale>["points"][number]) => number | null) =>
+    APPROACHES.map((a) => ({ series: a, points: (scale?.points ?? []).filter((p) => p.approach === a && pick(p) != null).map((p) => ({ x: p.services, y: pick(p) as number })) })).filter((l) => l.points.length);
+  const faults = Object.keys(FAULT_LABEL);
+  const rcaGroups: BarGroup[] = rca
+    ? [{ label: "All faults", sub: `${rca.cases} cases`, fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], sub: "5 cases", fs: [f] }))].map(({ label, sub, fs }) => ({
+        label,
+        sub,
+        bars: APPROACHES.filter((a) => rca.by_fault[a]).map((a) => {
+          const cells = fs.map((f) => rca.by_fault[a]?.[f] ?? [0, 0]);
+          return barOf(a, { k: cells.reduce((t, c) => t + c[0], 0), n: cells.reduce((t, c) => t + c[1], 0) });
+        }),
+      }))
+    : [];
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <Tile tone="ok" label="False alarms, healthy deploy" value={`${frac(alarm("engine"))} vs ${frac(alarm("llm_raw"))}`} sub="Engine vs LLM. The LLM blamed a harmless deploy." />
-      <Tile tone="neutral" label="Accuracy, incidents" value={`${frac(acc("engine"))} vs ${frac(acc("llm_raw"))}`} sub="A tie on simulated incidents. Not a win." />
-      {Number.isFinite(agreement) && <Tile tone="ok" label="Same answer twice" value={`100% vs ${Math.round(agreement * 100)}%`} sub="Engine vs the least consistent LLM run." />}
-      {cost?.engine && cost.llm_raw && (
-        <Tile tone="ok" label="Time and tokens" value={`${fmtMs(cost.engine.median_latency_ms)} vs ${fmtMs(cost.llm_raw.median_latency_ms)}`} sub={`0 vs ${(cost.llm_raw.median_tokens ?? 0).toLocaleString()} tokens per analysis.`} />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Segmented<ChartTab> label="Result charts" value={tab} onChange={setTab} options={options} />
+        <button type="button" onClick={() => setTable(!table)} className="text-[13px] text-text-2 underline-offset-2 hover:underline">
+          {table ? "View as chart" : "View as table"}
+        </button>
+      </div>
+      {tab === "accuracy" && (
+        <ChartCard title="Root cause accuracy and false alarms" subtitle="Simulated incidents, tuning seeds" legend={APPROACHES} caption="Top-1 is the share of runs where the first-ranked cause was correct. False alarms count healthy deploys that an approach blamed anyway. Small samples, so intervals are wide.">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ColumnChart title="Top-1 correct, by scenario" groups={accuracyGroups} yFormat={pct} table={table} />
+            <ColumnChart title="False alarms on a healthy deploy" groups={alarmGroups} yFormat={pct} table={table} />
+          </div>
+        </ChartCard>
       )}
-      {rca && <Tile tone="warn" label="Real data (RCAEval)" value={`${rcaSum("engine")[0]}/${rcaSum("engine")[1]} vs ${rcaSum("llm_raw")[0]}/${rcaSum("llm_raw")[1]}`} sub="Where the engine loses: noisy real metrics." />}
+      {tab === "consistency" && (
+        <ChartCard title="Same input, five runs" subtitle="How often the answer repeats" legend={APPROACHES} caption="Agreement is the share of runs that match the most common answer. Repeated runs of one seed are not independent samples, so read this as a property of the approach, not a precise rate. The engine is deterministic by construction.">
+          <div className="mx-auto max-w-[760px]"><ColumnChart groups={consistencyGroups} yFormat={pct} yTitle="Runs agreeing" table={table} /></div>
+        </ChartCard>
+      )}
+      {tab === "cost" && (
+        <ChartCard title="Cost and speed per analysis" subtitle="Median" legend={APPROACHES} caption="Engine time is the whole event stream processed in one batch on this machine. LLM figures are one call to the same model for every approach, at low reasoning effort.">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <HBarChart title="Latency" groups={latency} xMax={Math.max(...latency.map((g) => g.bars[0].value), 1) * 1.1} xTicks={[0, 1, 2, 3, 4]} xFormat={(v) => `${v} s`} xTitle="Seconds per analysis" table={table} />
+            <HBarChart title="Tokens" groups={tokens} xMax={Math.max(...tokens.map((g) => g.bars[0].value), 1) * 1.1} xTicks={[0, 2000, 4000, 6000]} xFormat={(v) => `${v / 1000}k`} xTitle="Tokens per analysis" table={table} />
+          </div>
+        </ChartCard>
+      )}
+      {tab === "scale" && (
+        <ChartCard title="Does an LLM degrade as systems grow?" subtitle="7 to 63 services" legend={APPROACHES} caption="Same fault shape at every size: a database fault, half the graph cascading, and a decoy deployment. The LLM held its accuracy, so the honest finding is about cost: tokens grow about ninefold while the engine stays under half a second.">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <LineChart title="Top-1 accuracy" lines={lines((p) => p.top1_correct)} xTitle="services" yTitle="Top-1 correct" yMax={1} yFormat={pct} table={table} />
+            <LineChart title="Tokens" lines={lines((p) => p.median_tokens)} xTitle="services" yTitle="Median tokens" yFormat={(v) => `${Math.round(v / 100) / 10}k`} table={table} />
+            <LineChart title="Latency" lines={lines((p) => p.median_latency_ms)} xTitle="services" yTitle="Median latency" yFormat={fmtMs} table={table} />
+          </div>
+        </ChartCard>
+      )}
+      {tab === "real" && rca && (
+        <ChartCard title="Real fault injections" subtitle="RCAEval RE1-OB, Online Boutique" legend={APPROACHES} caption="Where kea loses. One case per service and fault type, metrics only, with the metric mapping fixed before the first run. CPU, disk and network counters are not in the engine's metric set. This tests the service-fault path only, and 25 cases is a small sample.">
+          <div className="mx-auto max-w-[760px]"><HBarChart groups={rcaGroups} xMax={1} xTicks={[0, 0.25, 0.5, 0.75, 1]} xFormat={pct} xTitle="Top-1 correct" table={table} /></div>
+        </ChartCard>
+      )}
     </div>
   );
 }
@@ -147,93 +228,3 @@ export function ScenarioGrid({ rows }: { rows: EvalAggregate[] }) {
   );
 }
 
-export function Findings({ report }: { report: EvalReport }) {
-  const rows = report.results;
-  const consistency = report.consistency;
-  const cost = consistency?.cost ?? report.cost;
-  const consistencyGroups: BarGroup[] = consistency
-    ? [...new Set(consistency.results.map((r) => r.scenario))].map((scenario) => ({
-        label: SCENARIO_LABEL[scenario] ?? scenario,
-        bars: APPROACHES.flatMap((approach) => {
-          const row = find(consistency.results, approach, scenario);
-          if (approach === "engine") return row ? [{ series: approach, value: 1, text: "100%", detail: "Deterministic: identical input gives identical output" }] : [];
-          const c = row?.extra.consistency as { agreement: number } | undefined;
-          return c ? [{ series: approach, value: c.agreement, text: pct(c.agreement) }] : [];
-        }),
-      }))
-    : [];
-  const scale = report.scale;
-  const rca = report.rcaeval;
-  const lines = (pick: (p: NonNullable<typeof scale>["points"][number]) => number | null) =>
-    APPROACHES.map((a) => ({
-      series: a,
-      points: (scale?.points ?? []).filter((p) => p.approach === a && pick(p) != null).map((p) => ({ x: p.services, y: pick(p) as number })),
-    })).filter((l) => l.points.length);
-  return (
-    <div className="space-y-6">
-      <Group title="Where kea wins" text="Same accuracy as an LLM on simulated incidents, but no false alarms, the same answer every time, and milliseconds instead of seconds.">
-        <BarChart title="False alarms on a healthy deploy (lower is better)" groups={byScenario(rows, (r) => r.false_alarm, (s) => s.startsWith("s4"))} />
-        {consistencyGroups.length > 0 && <BarChart title="Same input run 5 times: how often the answer repeats" groups={consistencyGroups} />}
-        {cost && <CostTable cost={cost} />}
-      </Group>
-      {scale && scale.points.length > 0 && (
-        <Group title="Does an LLM degrade as systems grow?" text="No. Its accuracy held from 7 to 63 services. What grows is its cost: tokens rise about ninefold. The engine stays under half a second.">
-          <LineChart title="Top-1 accuracy by topology size" xLabel="services" yMax={1} yFormat={pct} lines={lines((p) => p.top1_correct)} />
-          <LineChart title="Median tokens per analysis" xLabel="services" yFormat={(v) => `${Math.round(v / 100) / 10}k`} lines={lines((p) => p.median_tokens)} />
-          <LineChart title="Median latency per analysis" xLabel="services" yFormat={fmtMs} lines={lines((p) => p.median_latency_ms)} />
-        </Group>
-      )}
-      {rca && (
-        <Group tone="warn" title="Where kea loses: real data" text="Replaying 25 real Online Boutique fault injections (RCAEval), the LLM finds the root cause more often. The engine was built and tuned on clean simulated telemetry, and it only sees latency, error rate, request rate and memory.">
-          <BarChart title={`RCAEval RE1-OB, ${rca.cases} cases: top-1 by fault type`} groups={rcaGroups(rca)} />
-          <Panel label="Caveats" className="p-4 text-[13px] leading-relaxed text-text-2 xl:col-span-2">
-            <h3 className="mb-1 text-[13px] font-medium text-text">How to read this</h3>
-            <ul className="list-disc space-y-1 pl-5">
-              <li>Real fault injections on Online Boutique, one case per service and fault type, metrics only.</li>
-              <li>The metric mapping was fixed before the first run and not tuned afterwards.</li>
-              <li>CPU, disk and network counters are not in the engine&apos;s metric set, so it is partly blind to those faults.</li>
-              <li>This tests the service-fault path only. The dataset has no deployment events, so it says nothing about deploy attribution.</li>
-              <li>25 cases is small. Treat the gap as direction, not a precise number.</li>
-            </ul>
-          </Panel>
-        </Group>
-      )}
-    </div>
-  );
-}
-
-function Group({ title, text, tone, children }: { title: string; text: string; tone?: "warn"; children: ReactNode }) {
-  return (
-    <section aria-label={title}>
-      <h2 className={`text-[16px] font-medium tracking-[-0.01em] ${tone === "warn" ? "text-warn" : "text-text"}`}>{title}</h2>
-      <p className="mb-3 mt-0.5 max-w-[70ch] text-[13px] leading-relaxed text-text-2">{text}</p>
-      <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">{children}</div>
-    </section>
-  );
-}
-
-function CostTable({ cost }: { cost: NonNullable<EvalReport["cost"]> }) {
-  return (
-    <figure className="flex flex-col rounded-card border border-line bg-surface p-4 shadow-card">
-      <figcaption className="mb-3 text-[13px] font-medium text-text">Cost and latency per analysis (median)</figcaption>
-      <div className="flex-1 overflow-x-auto">
-        <table className="w-full text-left text-[12px]">
-          <thead>
-            <tr className="text-text-3"><th className="pb-1.5 font-medium">Approach</th><th className="pb-1.5 text-right font-medium">Latency</th><th className="pb-1.5 text-right font-medium">Tokens</th></tr>
-          </thead>
-          <tbody>
-            {APPROACHES.filter((a) => cost[a]).map((a) => (
-              <tr key={a} className="border-t border-line">
-                <td className="py-2"><span aria-hidden className="mr-1.5 inline-block size-2.5 rounded-sm" style={{ background: SERIES[a].color }} />{SERIES[a].label}</td>
-                <td className="py-2 text-right font-mono tabular-nums">{fmtMs(cost[a].median_latency_ms)}</td>
-                <td className="py-2 text-right font-mono tabular-nums">{(cost[a].median_tokens ?? 0).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </figure>
-  );
-}
-
-const fmtMs = (ms: number | null) => (ms == null ? "n/a" : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);

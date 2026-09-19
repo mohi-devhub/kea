@@ -2,7 +2,7 @@
 
 import { WarningCircle } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { Findings, ScenarioGrid, Verdicts } from "@/components/WhyKea";
+import { CompareTable, ResultCharts, ScenarioGrid } from "@/components/WhyKea";
 import { Badge, EmptyState, Panel, Segmented } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import type { EvalAggregate, EvalReport, EvalRun } from "@/lib/types";
@@ -40,18 +40,22 @@ export default function EvalPage() {
         {!report && !error && <EmptyState>Loading the latest report...</EmptyState>}
         {report && (
           <>
-            <Verdicts report={report} />
             <Segmented<Tab>
               label="Eval sections"
               value={tab}
               onChange={setTab}
               options={[
-                { value: "findings", label: "Findings" },
+                { value: "findings", label: "Results" },
                 { value: "matrix", label: "Scenario grid" },
                 { value: "method", label: "Method and runs" },
               ]}
             />
-            {tab === "findings" && <Findings report={report} />}
+            {tab === "findings" && (
+              <>
+                <CompareTable report={report} />
+                <ResultCharts report={report} />
+              </>
+            )}
             {tab === "matrix" && (
               <>
                 <ScenarioGrid rows={report.results} />

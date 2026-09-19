@@ -1,0 +1,139 @@
+{
+  "services": [
+    {
+      "name": "web-frontend",
+      "kind": "service",
+      "tier": "customer_facing",
+      "layout": {
+        "x": 0.0,
+        "y": 200.0
+      },
+      "customer_facing": true,
+      "health": "healthy"
+    },
+    {
+      "name": "api-gateway",
+      "kind": "service",
+      "tier": "edge",
+      "layout": {
+        "x": 220.0,
+        "y": 200.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    },
+    {
+      "name": "checkout",
+      "kind": "service",
+      "tier": "customer_facing",
+      "layout": {
+        "x": 440.0,
+        "y": 80.0
+      },
+      "customer_facing": true,
+      "health": "healthy"
+    },
+    {
+      "name": "inventory",
+      "kind": "service",
+      "tier": "internal",
+      "layout": {
+        "x": 440.0,
+        "y": 320.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    },
+    {
+      "name": "payment",
+      "kind": "service",
+      "tier": "internal",
+      "layout": {
+        "x": 660.0,
+        "y": 0.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    },
+    {
+      "name": "notifications",
+      "kind": "service",
+      "tier": "internal",
+      "layout": {
+        "x": 660.0,
+        "y": 150.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    },
+    {
+      "name": "postgres",
+      "kind": "database",
+      "tier": "data",
+      "layout": {
+        "x": 880.0,
+        "y": 100.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    },
+    {
+      "name": "redis",
+      "kind": "cache",
+      "tier": "data",
+      "layout": {
+        "x": 660.0,
+        "y": 400.0
+      },
+      "customer_facing": false,
+      "health": "healthy"
+    }
+  ],
+  "edges": [
+    {
+      "source": "web-frontend",
+      "target": "api-gateway",
+      "blocking": true
+    },
+    {
+      "source": "api-gateway",
+      "target": "checkout",
+      "blocking": true
+    },
+    {
+      "source": "api-gateway",
+      "target": "inventory",
+      "blocking": true
+    },
+    {
+      "source": "checkout",
+      "target": "payment",
+      "blocking": true
+    },
+    {
+      "source": "checkout",
+      "target": "inventory",
+      "blocking": true
+    },
+    {
+      "source": "checkout",
+      "target": "notifications",
+      "blocking": false
+    },
+    {
+      "source": "payment",
+      "target": "postgres",
+      "blocking": true
+    },
+    {
+      "source": "inventory",
+      "target": "postgres",
+      "blocking": true
+    },
+    {
+      "source": "inventory",
+      "target": "redis",
+      "blocking": true
+    }
+  ]
+}

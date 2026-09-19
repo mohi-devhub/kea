@@ -7,6 +7,7 @@ verification. Payloads match what the live API broadcasts, so the UI has a singl
 import json
 from typing import Any
 
+from app.api.views import scenario_info, topology_response
 from app.config import ROOT, get_settings
 from app.engine import EngineState, InMemoryTopology
 from app.engine.prediction import make_prediction, verify_prediction
@@ -62,7 +63,14 @@ def build_messages(scenario: Scenario, topology: Topology, seed: int) -> list[di
             }
         )  # fmt: skip
 
-    emit("run.started", events[0].ts, {"scenario": scenario.id, "seed": seed, "speed": SPEED})
+    emit(
+        "run.started",
+        events[0].ts,
+        {
+            "scenario": scenario.id, "seed": seed, "speed": SPEED,
+            "warmup_end_ts": EPOCH_MS + scenario.warmup_s * 1000,
+        },
+    )  # fmt: skip
     batch: list[dict[str, Any]] = []
     for event in events:
         if batch and batch[0]["ts"] != event.ts:
@@ -107,9 +115,17 @@ def main() -> None:
     topology = load_topology(settings.topology_path)
     output_dir = ROOT / "frontend" / "public" / "fixtures"
     output_dir.mkdir(parents=True, exist_ok=True)
-    for scenario in load_scenarios(settings.topology_path.parent, topology):
-        if scenario.id not in FIXTURE_SCENARIOS:
-            continue
+    scenarios = [
+        s
+        for s in load_scenarios(settings.topology_path.parent, topology)
+        if s.id in FIXTURE_SCENARIOS
+    ]
+    # static data so fixture mode needs no backend at all
+    (output_dir / "topology.json").write_text(topology_response(topology).model_dump_json(indent=2))
+    (output_dir / "scenarios.json").write_text(
+        json.dumps([scenario_info(s).model_dump(mode="json") for s in scenarios], indent=2)
+    )
+    for scenario in scenarios:
         path = output_dir / f"{scenario.id}-{SEED}.jsonl"
         path.write_text(
             "".join(

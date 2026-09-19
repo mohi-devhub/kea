@@ -8,19 +8,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import TypeAdapter, ValidationError
 
 from app.api.store import RunStore, RunView
+from app.api.views import scenario_info, topology_response
 from app.config import ROOT, get_settings
 from app.engine.prediction import make_prediction, verify_prediction
 from app.graph import client as graph
 from app.models.api import (
     HealthResponse,
     ScenarioInfo,
-    ServiceNode,
     SimulateRequest,
-    TopologyEdge,
     TopologyResponse,
 )
 from app.models.events import Event
@@ -144,6 +144,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="kea", lifespan=lifespan)
+    app.add_middleware(  # the dashboard is served from another local port
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException) -> JSONResponse:
@@ -204,43 +210,14 @@ def create_app() -> FastAPI:
 
     @app.get("/topology")
     async def topology() -> TopologyResponse:
-        t = app.state.topology
-        latest = (
-            app.state.store.runs[next(reversed(app.state.store.runs))]
-            if app.state.store.runs
-            else None
-        )
-        return TopologyResponse(
-            services=[
-                ServiceNode(
-                    name=name,
-                    kind=definition.kind,
-                    tier=definition.tier,
-                    layout=definition.layout,
-                    customer_facing=definition.tier == "customer_facing",
-                    health=latest.health.get(name, "healthy") if latest else "healthy",
-                )
-                for name, definition in t.services.items()
-            ],
-            edges=[
-                TopologyEdge(source=edge.from_, target=edge.to, blocking=edge.blocking)
-                for edge in t.edges
-            ],
-        )
+        store: RunStore = app.state.store
+        latest = store.runs[next(reversed(store.runs))] if store.runs else None
+        return topology_response(app.state.topology, latest.health if latest else None)
 
     @app.get("/scenarios")
     async def scenarios() -> list[ScenarioInfo]:
         return [
-            ScenarioInfo(
-                id=scenario.id,
-                title=scenario.title,
-                description=scenario.description,
-                priority=scenario.priority,
-                fix_flow_available=any(
-                    deployment.commit_ref == "deploy-182" for deployment in scenario.deployments
-                ),
-            )
-            for scenario in load_scenarios(ROOT / "scenarios", app.state.topology)
+            scenario_info(item) for item in load_scenarios(ROOT / "scenarios", app.state.topology)
         ]
 
     @app.post("/simulate/{scenario}")
@@ -259,7 +236,12 @@ def create_app() -> FastAPI:
                 "run_id": run_id,
                 "seq": 0,
                 "sim_ts": 0,
-                "payload": {"scenario": scenario, "seed": request.seed, "speed": speed},
+                "payload": {
+                    "scenario": scenario,
+                    "seed": request.seed,
+                    "speed": speed,
+                    "warmup_end_ts": EPOCH_MS + scenarios_by_id[scenario].warmup_s * 1000,
+                },
             }
         )
 

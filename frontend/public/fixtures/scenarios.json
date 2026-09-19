@@ -1,0 +1,23 @@
+[
+  {
+    "id": "s1_bad_deploy_payment",
+    "title": "Bad payment deployment",
+    "description": "A payment deployment causes a cascading checkout outage.",
+    "priority": "P0",
+    "fix_flow_available": true
+  },
+  {
+    "id": "s2_postgres_degradation",
+    "title": "Postgres degradation",
+    "description": "A database fault is obscured by an earlier payment deployment.",
+    "priority": "P0",
+    "fix_flow_available": false
+  },
+  {
+    "id": "s3_red_herring_deploy",
+    "title": "Redis failure with red herring",
+    "description": "An unrelated notifications deployment precedes a cache failure.",
+    "priority": "P0",
+    "fix_flow_available": false
+  }
+]

@@ -9,6 +9,6 @@ backend/.ruff_cache
 frontend/node_modules
 frontend/.next
 frontend/.turbo
-frontend/fixtures
+
 .demo-repos
 .sandboxes

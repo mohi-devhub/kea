@@ -5,7 +5,7 @@ from typing import get_args
 from app.config import get_settings
 from app.graph.client import load_topology
 from app.models.api import WsEnvelope, WsType
-from app.models.engine import Anomaly, Incident
+from app.models.engine import Anomaly, Incident, Prediction
 from app.simulator.loader import load_scenarios
 from scripts.gen_fixtures import SEED, build_messages
 
@@ -30,9 +30,22 @@ def test_fixture_messages_match_contract() -> None:
             Anomaly.model_validate(message["payload"])
         if message["type"].startswith("incident."):
             Incident.model_validate(message["payload"])
+        if message["type"] == "prediction.made":
+            Prediction.model_validate(message["payload"])
     kinds = {m["type"] for m in messages}
     assert {"metrics.batch", "sim.clock", "deployment.observed", "service.health"} <= kinds
     assert {"anomaly.opened", "incident.opened", "incident.updated"} <= kinds
+    assert {"prediction.made", "prediction.verified", "incident.resolved", "run.stopped"} <= kinds
+    order = [m["type"] for m in messages]
+    assert order.index("prediction.made") < order.index("incident.resolved")
+    verified = next(m for m in messages if m["type"] == "prediction.verified")
+    assert verified["payload"]["verdict"] == "confirmed"
+    rollback = [
+        m
+        for m in messages
+        if m["type"] == "deployment.observed" and m["payload"]["kind"] == "rollback"
+    ]
+    assert [m["payload"]["payload"]["deployment_id"] for m in rollback] == ["dep-182"]
 
 
 def test_fixtures_are_deterministic() -> None:

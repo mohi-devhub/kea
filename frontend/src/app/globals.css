@@ -1,26 +1,161 @@
 @import "tailwindcss";
 
+/* kea design tokens. Warm monochrome, color only for meaning (health, severity, one accent).
+   Dark is the default (projector demo); light via <html data-theme="light">. Radii: card 8,
+   control 6, badge full. No shadows: 1px borders carry structure. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #121211;
+  --surface: #191918;
+  --surface-2: #211f1e;
+  --line: rgb(255 255 255 / 0.09);
+  --line-strong: rgb(255 255 255 / 0.16);
+  --text: #ecebe8;
+  --text-2: #a3a09a;
+  --text-3: #75726c;
+  --accent: #7fb2e5;
+  --accent-bg: rgb(127 178 229 / 0.12);
+  --ok: #7cc79a;
+  --ok-bg: rgb(124 199 154 / 0.12);
+  --warn: #e3b968;
+  --warn-bg: rgb(227 185 104 / 0.12);
+  --bad: #ea7d76;
+  --bad-bg: rgb(234 125 118 / 0.13);
+  --btn: #ecebe8;
+  --btn-text: #121211;
+  --btn-hover: #ffffff;
+  /* factor series, fixed order (dataviz categorical slots 1-4, validated on the dark surface) */
+  --f1: #3987e5;
+  --f2: #d95926;
+  --f3: #199e70;
+  --f4: #c98500;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1f0ed;
+  --line: #eaeaea;
+  --line-strong: #d8d7d3;
+  --text: #191918;
+  --text-2: #5f5e5a;
+  --text-3: #85837e;
+  --accent: #1f6c9f;
+  --accent-bg: #e1f3fe;
+  --ok: #346538;
+  --ok-bg: #edf3ec;
+  --warn: #956400;
+  --warn-bg: #fbf3db;
+  --bad: #9f2f2d;
+  --bad-bg: #fdebec;
+  --btn: #191918;
+  --btn-text: #ffffff;
+  --btn-hover: #333333;
+  /* validated on light; aqua and yellow are under 3:1, so segments always carry visible labels */
+  --f1: #2a78d6;
+  --f2: #eb6834;
+  --f3: #1baf7a;
+  --f4: #eda100;
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-bg: var(--accent-bg);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-btn: var(--btn);
+  --color-btn-text: var(--btn-text);
+  --color-btn-hover: var(--btn-hover);
+  --color-f1: var(--f1);
+  --color-f2: var(--f2);
+  --color-f3: var(--f3);
+  --color-f4: var(--f4);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-card: 8px;
+  --radius-control: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* numbers, ids and timestamps align in columns */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* thin, quiet scrollbars for the panels that scroll inside themselves */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* motion tokens (emil-design-eng): strong ease-out for UI, never ease-in, under 250ms */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* pressable things confirm the press; hover only where hover exists */
+.pressable {
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+.pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* the one looping animation: the causal pulse (disabled for reduced motion) */
+@keyframes kea-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
   }
 }
+.kea-pulse {
+  animation: kea-pulse 1.4s ease-in-out infinite;
+}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

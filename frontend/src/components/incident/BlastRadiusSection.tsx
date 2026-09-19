@@ -30,21 +30,21 @@ export function BlastRadiusSection({ incident }: { incident: Incident }) {
       <h3 id="blast-heading" className="text-[12px] font-medium text-text-3">
         Blast radius
       </h3>
-      <p className="mt-1.5 text-[13px] text-text">
+      <p className="mt-2 text-[13px] leading-snug text-text">
         {facing.length > 0 ? (
           <>
-            Customer-facing services affected: <span className="font-medium">{facing.join(", ")}</span>
+            Customer-facing services affected: <span className="num font-medium">{facing.join(", ")}</span>
           </>
         ) : (
           "No customer-facing service is affected so far."
         )}
-        <span className="block text-[12px] text-text-2">
+        <span className="mt-0.5 block text-[12px] text-text-2">
           {incident.blast_radius.services.length} services with anomalies in this incident.
         </span>
       </p>
 
       {blast ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
           {blast.callers.length > 0 ? (
             <ul className="flex flex-wrap gap-1.5" aria-label={`Services that reach ${blast.root_service ?? "the root"} through blocking calls`}>
               {blast.callers.map((c) => (
@@ -55,7 +55,7 @@ export function BlastRadiusSection({ incident }: { incident: Incident }) {
                     onPointerLeave={() => setHighlight([])}
                     onFocus={() => setHighlight([c.service])}
                     onBlur={() => setHighlight([])}
-                    className="pressable num rounded-full border border-line bg-surface-2 px-2 py-0.5 text-[12px] text-text-2 [@media(hover:hover)]:hover:text-text"
+                    className="pressable num rounded-md border border-line bg-surface-2 px-2 py-1 text-[12px] text-text-2 [@media(hover:hover)]:hover:text-text"
                   >
                     {c.service}
                     {c.customer_facing ? " (customer-facing)" : ""}, {c.hops} {c.hops === 1 ? "hop" : "hops"}
@@ -67,19 +67,19 @@ export function BlastRadiusSection({ incident }: { incident: Incident }) {
             <p className="text-[12px] text-text-2">No upstream callers were returned for {blast.root_service ?? "the root cause"}.</p>
           )}
           <div>
-            <Button variant="ghost" className="h-7 px-2 text-[12px]" aria-expanded={showCypher} onClick={() => setShowCypher((v) => !v)}>
+            <Button variant="ghost" className="-ml-2 h-8 px-2 text-[12px]" aria-expanded={showCypher} onClick={() => setShowCypher((v) => !v)}>
               {showCypher ? "Hide Cypher query" : "Show Cypher query"}
             </Button>
             {showCypher && (
-              <div className="mt-2 rounded-control border border-line bg-surface-2">
+              <div className="mt-2 overflow-hidden rounded-lg border border-line bg-surface-2">
                 <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
-                  <span className="text-[11px] text-text-3">Cypher</span>
-                  <Button variant="ghost" className="h-6 px-1.5 text-[11px]" onClick={copy} aria-label="Copy Cypher query">
+                  <span className="text-[12px] text-text-3">Cypher</span>
+                  <Button variant="ghost" className="h-7 px-2 text-[12px]" onClick={copy} aria-label="Copy Cypher query">
                     {copied ? <Check size={12} weight="bold" aria-hidden /> : <Copy size={12} weight="bold" aria-hidden />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
                 </div>
-                <pre className="num scroll-quiet overflow-x-auto px-3 py-2 text-[12px] leading-relaxed whitespace-pre-wrap text-text">{blast.cypher}</pre>
+                <pre className="num scroll-quiet overflow-x-auto whitespace-pre-wrap px-3 py-2.5 text-[12px] leading-relaxed text-text">{blast.cypher}</pre>
                 {Object.keys(blast.parameters).length > 0 && (
                   <pre className="num border-t border-line px-3 py-2 text-[12px] text-text-2">
                     {`parameters: ${JSON.stringify(blast.parameters)}`}

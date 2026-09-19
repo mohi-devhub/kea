@@ -1,0 +1,14 @@
+CLAUDE.md
+docs/
+.DS_Store
+.env
+.sandboxes/
+.demo-repos/
+eval_results/*/llm_cache/
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+node_modules/
+.next/

@@ -1,14 +1,16 @@
 .PHONY: up down reset test test-int lint types api
 
 up:            ## infra (redpanda, neo4j); api/worker/frontend run on the host in dev
-	docker compose up -d --wait
+	docker compose up -d --wait redpanda neo4j
+	docker compose up redpanda-init
 
 down:
 	docker compose down
 
 reset:         ## wipe volumes; topology is reseeded when the api starts
 	docker compose down -v
-	docker compose up -d --wait
+	docker compose up -d --wait redpanda neo4j
+	docker compose up redpanda-init
 
 test:          ## fast unit tests, no infra needed
 	cd backend && uv run pytest -q

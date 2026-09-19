@@ -12,3 +12,6 @@ __pycache__/
 .pytest_cache/
 node_modules/
 .next/
+.agents/
+.claude/
+skills-lock.json

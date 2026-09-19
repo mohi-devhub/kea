@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCounterClockwise, ArrowUUpLeft, ChartBar, Graph, Moon, Play, SquaresFour, Sun } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ArrowUUpLeft, ChartBar, Clock, Graph, Moon, Play, SquaresFour, Sun } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -92,7 +92,13 @@ function RunControls() {
         <Button
           busy={busy === "recover"}
           disabled={!canRecover}
-          title={mode === "fixture" ? "Fixture replay plays the recovery by itself" : canRecover ? undefined : "Recover needs an open incident"}
+          title={
+            mode === "fixture"
+              ? "Fixture replay plays the recovery by itself"
+              : canRecover
+                ? "Apply the scenario recovery and watch the affected services return to normal"
+                : "Recover needs an open incident"
+          }
           onClick={() => act("recover", recoverRun)}
         >
           <ArrowUUpLeft size={14} weight="bold" aria-hidden /> Recover
@@ -167,26 +173,29 @@ function StatusCard() {
 export function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col gap-6 border-r border-line bg-bg px-4 py-5">
+    <aside className="flex w-[248px] shrink-0 flex-col gap-6 overflow-y-auto border-r border-line bg-bg px-4 py-5">
       <Link href="/" className="flex items-center gap-2.5 px-1">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-btn text-btn-text">
           <Graph size={18} weight="bold" aria-hidden />
         </span>
         <span className="text-[19px] font-semibold tracking-tight text-text">kea</span>
       </Link>
-      {path === "/" && <RunControls />}
       <nav aria-label="Views" className="space-y-1.5">
         <SectionPill>View</SectionPill>
         <div className="space-y-0.5 pt-1.5">
           <NavItem href="/" active={path === "/"} icon={<SquaresFour size={17} weight="bold" aria-hidden />}>
             Overview
           </NavItem>
+          <NavItem href="/timeline" active={path === "/timeline"} icon={<Clock size={17} weight="bold" aria-hidden />}>
+            Timeline
+          </NavItem>
           <NavItem href="/eval" active={path === "/eval"} icon={<ChartBar size={17} weight="bold" aria-hidden />}>
             Eval
           </NavItem>
         </div>
       </nav>
-      <div className="mt-auto">
+      <div className="mt-auto space-y-6">
+        {path === "/" && <RunControls />}
         <StatusCard />
       </div>
     </aside>

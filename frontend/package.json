@@ -11,9 +11,12 @@
     "types": "openapi-typescript ../backend/openapi.json -o src/types/api.ts"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@xyflow/react": "^12.11.6",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

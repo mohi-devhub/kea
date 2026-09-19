@@ -22,8 +22,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        {/* apply a saved theme before first paint (dark is the default) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var t=localStorage.getItem('kea-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}",
+          }}
+        />
+      </head>
+      <body className="h-full">{children}</body>
     </html>
   );
 }

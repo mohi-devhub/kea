@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
+from app.agent.models import InvestigationResult, TraceEntry
 from app.main import app
 from app.models.api import ErrorResponse, WsEnvelope
 from app.models.engine import (
@@ -28,6 +29,7 @@ from app.models.engine import (
 CONTRACT_MODELS: list[type[BaseModel]] = [
     Anomaly, Candidate, EngineUpdate, ErrorResponse, Evidence, Incident, Prediction,
     PredictionVerification, RejectedCandidate, WhatChanged, WsEnvelope,
+    InvestigationResult, TraceEntry,
 ]  # fmt: skip
 
 spec = app.openapi()

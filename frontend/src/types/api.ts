@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/incidents/{incident_id}/investigate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Investigate */
+        post: operations["investigate_incidents__incident_id__investigate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/incidents/{incident_id}/prediction": {
         parameters: {
             query?: never;
@@ -152,6 +169,23 @@ export interface paths {
         };
         /** Timeline */
         get: operations["timeline_incidents__incident_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/investigations/{investigation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Investigation */
+        get: operations["investigation_investigations__investigation_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -601,6 +635,64 @@ export interface components {
             state: "open" | "resolved";
             what_changed: components["schemas"]["WhatChanged"];
         };
+        /** InvestigationResult */
+        InvestigationResult: {
+            blast_radius: components["schemas"]["BlastRadius"];
+            /** Caveats */
+            caveats: string[];
+            /**
+             * Disagreement
+             * @default null
+             */
+            disagreement: {
+                [key: string]: unknown;
+            } | null;
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /** Incident Id */
+            incident_id: string;
+            /** Investigation Id */
+            investigation_id: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "LIVE" | "REPLAYED" | "TEMPLATE";
+            /** Model */
+            model: string;
+            /** Narrative Steps */
+            narrative_steps: components["schemas"]["NarrativeStep"][];
+            /** Provider */
+            provider: string;
+            /** Rejected Candidates */
+            rejected_candidates: components["schemas"]["RejectedCandidate"][];
+            /** Root Cause Candidate Id */
+            root_cause_candidate_id: string | null;
+            /** Summary */
+            summary: string;
+            /** Trace */
+            trace: components["schemas"]["TraceEntry"][];
+            usage: components["schemas"]["InvestigationUsage"];
+            what_changed: components["schemas"]["WhatChanged"];
+        };
+        /** InvestigationUsage */
+        InvestigationUsage: {
+            /**
+             * Input Tokens
+             * @default null
+             */
+            input_tokens: number | null;
+            /**
+             * Output Tokens
+             * @default null
+             */
+            output_tokens: number | null;
+            /**
+             * Total Tokens
+             * @default null
+             */
+            total_tokens: number | null;
+        };
         /** Layout */
         Layout: {
             /** X */
@@ -684,6 +776,13 @@ export interface components {
             metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct";
             /** Value */
             value: number;
+        };
+        /** NarrativeStep */
+        NarrativeStep: {
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Text */
+            text: string;
         };
         /** Prediction */
         Prediction: {
@@ -836,6 +935,33 @@ export interface components {
             edges: components["schemas"]["TopologyEdge"][];
             /** Services */
             services: components["schemas"]["ServiceNode"][];
+        };
+        /** TraceEntry */
+        TraceEntry: {
+            /**
+             * Args Summary
+             * @default
+             */
+            args_summary: string;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model" | "tool" | "template" | "repair" | "error";
+            /** Name */
+            name: string;
+            /**
+             * Result Summary
+             * @default
+             */
+            result_summary: string;
+            /** Step */
+            step: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1103,6 +1229,39 @@ export interface operations {
             };
         };
     };
+    investigate_incidents__incident_id__investigate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     prediction_incidents__incident_id__prediction_get: {
         parameters: {
             query?: never;
@@ -1156,6 +1315,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    investigation_investigations__investigation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

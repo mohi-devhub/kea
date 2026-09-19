@@ -704,6 +704,174 @@
         "title": "Incident",
         "type": "object"
       },
+      "InvestigationResult": {
+        "properties": {
+          "blast_radius": {
+            "$ref": "#/components/schemas/BlastRadius"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "disagreement": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Disagreement"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "LIVE",
+              "REPLAYED",
+              "TEMPLATE"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "narrative_steps": {
+            "items": {
+              "$ref": "#/components/schemas/NarrativeStep"
+            },
+            "title": "Narrative Steps",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "rejected_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedCandidate"
+            },
+            "title": "Rejected Candidates",
+            "type": "array"
+          },
+          "root_cause_candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cause Candidate Id"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/TraceEntry"
+            },
+            "title": "Trace",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/InvestigationUsage"
+          },
+          "what_changed": {
+            "$ref": "#/components/schemas/WhatChanged"
+          }
+        },
+        "required": [
+          "investigation_id",
+          "incident_id",
+          "mode",
+          "provider",
+          "model",
+          "summary",
+          "root_cause_candidate_id",
+          "narrative_steps",
+          "evidence",
+          "blast_radius",
+          "what_changed",
+          "rejected_candidates",
+          "caveats",
+          "disagreement",
+          "trace",
+          "usage"
+        ],
+        "title": "InvestigationResult",
+        "type": "object"
+      },
+      "InvestigationUsage": {
+        "properties": {
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Tokens"
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens"
+        ],
+        "title": "InvestigationUsage",
+        "type": "object"
+      },
       "Layout": {
         "properties": {
           "x": {
@@ -887,6 +1055,27 @@
           "value"
         ],
         "title": "MetricPayload",
+        "type": "object"
+      },
+      "NarrativeStep": {
+        "properties": {
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "evidence_ids"
+        ],
+        "title": "NarrativeStep",
         "type": "object"
       },
       "Prediction": {
@@ -1262,6 +1451,54 @@
           "edges"
         ],
         "title": "TopologyResponse",
+        "type": "object"
+      },
+      "TraceEntry": {
+        "properties": {
+          "args_summary": {
+            "default": "",
+            "title": "Args Summary",
+            "type": "string"
+          },
+          "duration_ms": {
+            "default": 0,
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "model",
+              "tool",
+              "template",
+              "repair",
+              "error"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "result_summary": {
+            "default": "",
+            "title": "Result Summary",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "kind",
+          "name",
+          "args_summary",
+          "result_summary",
+          "duration_ms"
+        ],
+        "title": "TraceEntry",
         "type": "object"
       },
       "ValidationError": {
@@ -1701,6 +1938,47 @@
         "summary": "Causal Path"
       }
     },
+    "/incidents/{incident_id}/investigate": {
+      "post": {
+        "operationId": "investigate_incidents__incident_id__investigate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Investigate Incidents  Incident Id  Investigate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Investigate"
+      }
+    },
     "/incidents/{incident_id}/prediction": {
       "get": {
         "description": "Frozen prediction after Recover; before that, a live preview (`frozen: false`).",
@@ -1785,6 +2063,47 @@
           }
         },
         "summary": "Timeline"
+      }
+    },
+    "/investigations/{investigation_id}": {
+      "get": {
+        "operationId": "investigation_investigations__investigation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Investigation Investigations  Investigation Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Investigation"
       }
     },
     "/reset": {

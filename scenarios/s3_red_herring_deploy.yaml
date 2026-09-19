@@ -23,3 +23,5 @@ ground_truth:
   must_reject:
     - {candidate_id: deployment:dep-203, reason_code: NO_ANOMALY_ON_SERVICE_OR_REACHABLE}
   ordering_constraints: [[redis.memory_used_pct, redis.latency_p95_ms]]
+recover:
+  remediation: {service: redis, message: "Memory limit raised and eviction restarted"}

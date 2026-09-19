@@ -28,6 +28,16 @@ def validate_scenario(scenario: Scenario, topology: Topology) -> None:
             raise ValueError(f"{scenario.id}: invalid effect {effect.service}.{effect.metric}")
         if (effect.target_multiplier is None) == (effect.target_value is None):
             raise ValueError(f"{scenario.id}: effect needs exactly one target")
+    if scenario.recover is not None:
+        r = scenario.recover
+        if (r.rollback_deployment is None) == (r.remediation is None):
+            raise ValueError(f"{scenario.id}: recover needs exactly one of rollback/remediation")
+        if r.rollback_deployment and r.rollback_deployment not in {
+            d.deployment_id for d in scenario.deployments
+        }:
+            raise ValueError(f"{scenario.id}: recover rolls back an unknown deployment")
+        if r.remediation and r.remediation.service not in services:
+            raise ValueError(f"{scenario.id}: unknown remediation service")
     for first, second in scenario.ground_truth.ordering_constraints:
         a = next(e for e in scenario.effects if f"{e.service}.{e.metric}" == first)
         b = next(e for e in scenario.effects if f"{e.service}.{e.metric}" == second)

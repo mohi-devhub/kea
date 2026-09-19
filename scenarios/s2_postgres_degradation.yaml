@@ -23,3 +23,5 @@ ground_truth:
   must_reject:
     - {candidate_id: deployment:dep-171, reason_code: ANOMALY_EXPLAINED_BY_EARLIER_CAUSE}
   ordering_constraints: [[postgres.latency_p95_ms, payment.latency_p95_ms]]
+recover:
+  remediation: {service: postgres, message: "Storage failover completed; IO latency normalised"}

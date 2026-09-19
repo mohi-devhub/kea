@@ -19,3 +19,5 @@ ground_truth:
   must_not_implicate: [notifications, redis, inventory]
   must_reject: []
   ordering_constraints: [[payment.latency_p95_ms, postgres.active_connections]]
+recover:
+  rollback_deployment: dep-182

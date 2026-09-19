@@ -46,6 +46,19 @@ class GroundTruth(BaseModel):
     ordering_constraints: list[tuple[str, str]]
 
 
+class Remediation(BaseModel):
+    service: str
+    message: str
+
+
+class Recover(BaseModel):
+    """Simulator-side recovery (not ground truth): what the operator's fix looks like."""
+
+    rollback_deployment: str | None = None
+    remediation: Remediation | None = None
+    ramp_s: int = 15
+
+
 class Scenario(BaseModel):
     id: str
     title: str
@@ -56,3 +69,4 @@ class Scenario(BaseModel):
     deployments: list[DeploymentSpec]
     effects: list[EffectSpec]
     ground_truth: GroundTruth
+    recover: Recover | None = None

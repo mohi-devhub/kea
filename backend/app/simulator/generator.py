@@ -4,7 +4,14 @@
 import hashlib
 import random
 
-from app.models.events import DeploymentEvent, Event, MetricEvent, make_event_id
+from app.models.events import (
+    DeploymentEvent,
+    Event,
+    LogEvent,
+    MetricEvent,
+    RollbackEvent,
+    make_event_id,
+)
 from app.models.topology import Topology
 from app.simulator.models import EffectSpec, Scenario
 
@@ -16,7 +23,7 @@ def _rng(seed: int, service: str, metric: str) -> random.Random:
     return random.Random(int.from_bytes(digest[:8], "big"))
 
 
-def _effect_value(effect: EffectSpec, base: float, elapsed: int, jitter: int) -> float:
+def _raw_effect_value(effect: EffectSpec, base: float, elapsed: int, jitter: int) -> float:
     age = elapsed - (effect.start_s + jitter)
     if age < 0 or (effect.duration_s is not None and age >= effect.duration_s):
         return base
@@ -29,10 +36,31 @@ def _effect_value(effect: EffectSpec, base: float, elapsed: int, jitter: int) ->
     return base + (target - base) * progress
 
 
+def _effect_value(
+    effect: EffectSpec, base: float, elapsed: int, jitter: int, recover: tuple[int, int] | None
+) -> float:
+    """Effect value; after `recover=(start_s, ramp_s)` it ramps linearly back to baseline."""
+    value = _raw_effect_value(effect, base, elapsed, jitter)
+    if recover is None:
+        return value
+    start, ramp = recover
+    k = min(1.0, max(0.0, (elapsed - start) / max(ramp, 1)))
+    return value + (base - value) * k
+
+
 def generate(
-    scenario: Scenario, topology: Topology, seed: int, run_id: str | None = None
+    scenario: Scenario,
+    topology: Topology,
+    seed: int,
+    run_id: str | None = None,
+    recover_at_s: int | None = None,
 ) -> list[Event]:
-    """Generate ordered events entirely from scenario data and a seed."""
+    """Generate ordered events entirely from scenario data and a seed.
+
+    `recover_at_s` (seconds after T0) applies the scenario's `recover` block: effects heal in the
+    same cascade order they began, and a rollback or remediation event is emitted. Events before
+    the recovery time are identical with and without it, so a live run can switch mid-stream.
+    """
     actual_run_id = run_id or f"{scenario.id}-{seed}"
     events: list[Event] = []
     jitter_rng = random.Random(
@@ -59,6 +87,31 @@ def generate(
             )
         )
     end_s = scenario.warmup_s + scenario.duration_s
+    recover = scenario.recover if recover_at_s is not None else None
+    first_start = min((e.start_s for e in scenario.effects), default=0)
+    if recover is not None and recover_at_s is not None:
+        spread = max(e.start_s for e in scenario.effects) - first_start
+        end_s = max(end_s, scenario.warmup_s + recover_at_s + spread + recover.ramp_s + 90)
+        ts = EPOCH_MS + (scenario.warmup_s + recover_at_s) * 1000
+        if recover.rollback_deployment:
+            target = next(
+                d for d in scenario.deployments if d.deployment_id == recover.rollback_deployment
+            )
+            events.append(
+                RollbackEvent(
+                    event_id="", run_id=actual_run_id, seq=0, ts=ts, service=target.service,
+                    kind="rollback",
+                    payload={"deployment_id": target.deployment_id, "restored_version": "previous"},
+                )
+            )  # fmt: skip
+        elif recover.remediation:
+            events.append(
+                LogEvent(
+                    event_id="", run_id=actual_run_id, seq=0, ts=ts,
+                    service=recover.remediation.service, kind="log",
+                    payload={"level": "INFO", "message": recover.remediation.message},
+                )
+            )  # fmt: skip
     effects_by_series: dict[tuple[str, str], list[EffectSpec]] = {}
     for effect in scenario.effects:
         effects_by_series.setdefault((effect.service, effect.metric), []).append(effect)
@@ -72,8 +125,13 @@ def generate(
             for metric, (base, noise_sd) in sorted(topology.metrics[service].items()):
                 value = base * (1 + series_rng[(service, metric)].gauss(0, noise_sd))
                 for effect in effects_by_series.get((service, metric), []):
+                    heal = (
+                        (recover_at_s + effect.start_s - first_start, recover.ramp_s)
+                        if recover is not None and recover_at_s is not None
+                        else None
+                    )
                     value = _effect_value(
-                        effect, base, elapsed - scenario.warmup_s, jitter[id(effect)]
+                        effect, base, elapsed - scenario.warmup_s, jitter[id(effect)], heal
                     )
                 events.append(
                     MetricEvent(

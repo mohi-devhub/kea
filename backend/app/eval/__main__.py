@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import ROOT, Settings, get_settings
+from app.eval.rcaeval import case_names, run_rcaeval, write
 from app.eval.runner import EvalRunner, parse_seed_spec, write_artifacts
 from app.eval.scale import run_sweep
 from app.llm.factory import provider_for_settings
@@ -34,6 +35,13 @@ def _parser() -> argparse.ArgumentParser:
     scale.add_argument(
         "--output", type=Path, default=ROOT / "eval_results" / "latest" / "scale.json"
     )
+    rca = commands.add_parser("rcaeval", help="replay RCAEval RE1-OB cases")
+    rca.add_argument("--reps", type=int, default=1)
+    rca.add_argument("--approaches", default="engine,llm_raw,llm_raw_topology")
+    rca.add_argument("--cache", type=Path, default=ROOT / ".rcaeval-cache")
+    rca.add_argument(
+        "--output", type=Path, default=ROOT / "eval_results" / "latest" / "rcaeval.json"
+    )
     return parser
 
 
@@ -54,6 +62,19 @@ def _scale(args: argparse.Namespace, settings: Settings) -> None:
 def main() -> None:
     args = _parser().parse_args()
     settings = get_settings()
+    if args.command == "rcaeval":
+        report = asyncio.run(
+            run_rcaeval(
+                EvalRunner(settings),
+                args.cache,
+                case_names(args.reps),
+                [item.strip() for item in args.approaches.split(",") if item.strip()],
+                baseline_provider=provider_for_settings(settings, "baseline"),
+            )
+        )
+        write(report, args.output)
+        print(f"Wrote {args.output}")
+        return
     if args.command == "scale":
         _scale(args, settings)
         return

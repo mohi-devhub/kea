@@ -19,3 +19,4 @@ node_modules/
 skills-lock.json
 frontend/AGENTS.md
 .llm-cache/
+.rcaeval-cache/

@@ -1,6 +1,7 @@
 import { API_URL } from "@/lib/config";
 import type {
   BlastRadius,
+  EvalReport,
   InvestigationResult,
   PredictionView,
   ScenarioInfo,
@@ -59,4 +60,5 @@ export const api = {
       result: InvestigationResult | null;
       error: string | null;
     }>(`/investigations/${investigationId}`),
+  evalLatest: () => request<EvalReport>("/eval/results/latest"),
 };

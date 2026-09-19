@@ -98,3 +98,57 @@ export type InvestigationState = {
   steps: AgentTrace[];
   error?: string | null;
 };
+
+export type EvalMetric = { k: number; n: number; ci_low: number; ci_high: number };
+export type EvalAggregate = {
+  approach: string;
+  scenario: string;
+  n: number;
+  top1_correct: EvalMetric;
+  top3_contains: EvalMetric;
+  false_blame: EvalMetric;
+  false_alarm: EvalMetric;
+  /** runs that produced no answer (not_run, provider_error); never in the denominator */
+  unscored?: Record<string, number>;
+  /** malformed answers: scored as incorrect and disclosed */
+  parse_errors?: number;
+  extra: Record<string, unknown>;
+};
+export type EvalReport = {
+  meta: {
+    generated_at: string;
+    git_commit: string;
+    seed_set: string;
+    seeds: number[];
+    scenarios: string[];
+    approaches: string[];
+    runs: number;
+    baseline_provider: string | null;
+    baseline_model: string | null;
+    agent_provider: string | null;
+    agent_model: string | null;
+    reasoning_effort: string;
+    prompt_version: string;
+    heldout_eval_count: number;
+  };
+  results: EvalAggregate[];
+  warnings?: string[];
+  engine_config?: { weights?: number[]; [key: string]: unknown };
+  limitations: string[];
+  runs?: EvalRun[];
+};
+
+export type EvalRun = {
+  approach: string;
+  scenario: string;
+  seed: number;
+  run_index: number;
+  input_sha256: string;
+  raw_output?: string | null;
+  parsed_output?: Record<string, unknown> | null;
+  grade: Record<string, unknown>;
+  latency_ms?: number | null;
+  usage?: Record<string, number>;
+  error?: string | null;
+  status?: "ok" | "not_run" | "provider_error" | "parse_error";
+};

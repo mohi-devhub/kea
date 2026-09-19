@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/eval/results/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Eval */
+        get: operations["latest_eval_eval_results_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -1015,6 +1032,28 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    latest_eval_eval_results_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     events_events_post: {
         parameters: {
             query?: never;

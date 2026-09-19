@@ -6,6 +6,7 @@ export const SERIES: Record<string, { label: string; color: string }> = {
   engine: { label: "kea engine", color: "var(--f1)" },
   llm_raw: { label: "LLM, raw telemetry", color: "var(--f2)" },
   llm_raw_topology: { label: "LLM + topology", color: "var(--f3)" },
+  hybrid: { label: "Engine + LLM explainer", color: "var(--f4)" },
 };
 const seriesOf = (key: string) => SERIES[key] ?? { label: key, color: "var(--text-2)" };
 
@@ -20,17 +21,18 @@ export function BarChart({ groups, max = 1, title }: { groups: BarGroup[]; max?:
       {table ? (
         <DataTable rows={groups.flatMap((g) => g.bars.map((b) => [g.label, seriesOf(b.series).label, b.text]))} head={["Group", "Series", "Value"]} />
       ) : (
-        <div role="img" aria-label={title} className="space-y-3">
+        <div role="img" aria-label={title} className="space-y-4">
           {groups.map((group) => (
-            <div key={group.label} className="grid grid-cols-[minmax(90px,150px)_1fr] items-center gap-3">
-              <div className="text-[12px] text-text-2">{group.label}</div>
-              <div className="space-y-1">
+            <div key={group.label}>
+              <div className="mb-1.5 text-[12px] font-medium text-text-2">{group.label}</div>
+              <div className="space-y-1.5">
                 {group.bars.map((bar) => (
-                  <div key={bar.series} title={bar.detail ?? `${seriesOf(bar.series).label}: ${bar.text}`} className="flex items-center gap-2">
-                    <div className="h-3 flex-1 rounded-sm bg-surface-2">
-                      <div className="h-3 rounded-r-[4px]" style={{ width: `${Math.max(0, Math.min(1, bar.value / max)) * 100}%`, background: seriesOf(bar.series).color, minWidth: bar.value > 0 ? 3 : 0 }} />
+                  <div key={bar.series} title={bar.detail ?? `${seriesOf(bar.series).label}: ${bar.text}`} className="grid grid-cols-[104px_1fr_56px] items-center gap-2">
+                    <span className="truncate text-[11px] text-text-3">{seriesOf(bar.series).label}</span>
+                    <div className="h-2.5 rounded-full bg-surface-2">
+                      <div className="h-2.5 rounded-full" style={{ width: `${Math.max(0, Math.min(1, bar.value / max)) * 100}%`, background: seriesOf(bar.series).color, minWidth: bar.value > 0 ? 4 : 0 }} />
                     </div>
-                    <span className="w-[74px] shrink-0 text-right font-mono text-[12px] tabular-nums text-text">{bar.text}</span>
+                    <span className="text-right font-mono text-[12px] tabular-nums text-text">{bar.text}</span>
                   </div>
                 ))}
               </div>
@@ -87,14 +89,14 @@ export function LineChart({ lines, title, xLabel, yFormat, yMax }: { lines: Line
 
 function ChartFrame({ title, table, setTable, legend, children }: { title: string; table: boolean; setTable: (v: boolean) => void; legend: string[]; children: ReactNode }) {
   return (
-    <figure className="rounded-card border border-line bg-surface p-4">
+    <figure className="flex flex-col rounded-card border border-line bg-surface p-4 shadow-card">
       <figcaption className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[13px] font-medium text-text">{title}</span>
         <button type="button" onClick={() => setTable(!table)} className="text-[12px] text-text-2 underline-offset-2 hover:underline">
           {table ? "View as chart" : "View as table"}
         </button>
       </figcaption>
-      {children}
+      <div className="flex-1">{children}</div>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
         {legend.map((key) => (
           <span key={key} className="flex items-center gap-1.5 text-[12px] text-text-2">

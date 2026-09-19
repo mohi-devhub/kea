@@ -92,6 +92,11 @@ type KeaState = {
   setTab: (t: Tab) => void;
 };
 
+/** Recover applies to an open incident, not to a publisher still running: a scripted run can finish
+ * (at 10x within seconds) while the system is still failing, and recovery must stay available. */
+export const selectCanRecover = (s: KeaState): boolean =>
+  s.mode === "live" && s.run !== null && s.incident?.state === "open";
+
 const MAX_TIMELINE = 400;
 const RUN_SCOPED = {
   simTs: 0,

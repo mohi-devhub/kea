@@ -4,12 +4,12 @@ import { ArrowUUpLeft, Graph, MagnifyingGlass, Path } from "@phosphor-icons/reac
 import { useState } from "react";
 import { Button } from "@/components/ui";
 import { errorText, loadBlast, recoverRun } from "@/lib/session";
-import { useKea } from "@/lib/store";
+import { selectCanRecover, useKea } from "@/lib/store";
 
 /** Incident actions. Each one states why it is disabled instead of silently doing nothing. */
 export function ActionBar() {
   const incident = useKea((s) => s.incident);
-  const run = useKea((s) => s.run);
+  const canRecover = useKea(selectCanRecover);
   const mode = useKea((s) => s.mode);
   const overlay = useKea((s) => s.overlayCandidateId);
   const setOverlay = useKea((s) => s.setOverlay);
@@ -21,13 +21,12 @@ export function ActionBar() {
   if (!incident) return null;
   const top = incident.candidates[0];
   const pathOn = top !== undefined && overlay === top.candidate_id;
-  const canRecover = run?.status === "running" && mode === "live";
   const recoverWhy =
     mode === "fixture"
       ? "Fixture replay plays the recovery by itself."
-      : run?.status !== "running"
-        ? "Recover is available while a run is in progress."
-        : undefined;
+      : canRecover
+        ? undefined
+        : "This incident is already resolved.";
 
   const act = async (name: "blast" | "recover", fn: () => Promise<void>) => {
     if (busy) return;

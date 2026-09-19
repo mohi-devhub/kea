@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Badge, Button } from "@/components/ui";
 import { clock } from "@/lib/fmt";
 import { errorText, recoverRun, resetAll, startRun } from "@/lib/session";
-import { useKea } from "@/lib/store";
+import { selectCanRecover, useKea } from "@/lib/store";
 
 const SPEEDS = [1, 5, 10, 25];
 
@@ -24,6 +24,7 @@ export function Header() {
   const simTs = useKea((s) => s.simTs);
   const conn = useKea((s) => s.conn);
   const mode = useKea((s) => s.mode);
+  const canRecover = useKea(selectCanRecover);
 
   const [picked, setPicked] = useState("");
   const scenario = picked || scenarios[0]?.id || "";
@@ -88,8 +89,8 @@ export function Header() {
       </Button>
       <Button
         busy={busy === "recover"}
-        disabled={!running || mode === "fixture"}
-        title={mode === "fixture" ? "Fixture replay plays the recovery by itself" : undefined}
+        disabled={!canRecover}
+        title={mode === "fixture" ? "Fixture replay plays the recovery by itself" : canRecover ? undefined : "Recover needs an open incident"}
         onClick={() => act("recover", recoverRun)}
       >
         <ArrowUUpLeft size={14} weight="bold" aria-hidden /> Recover

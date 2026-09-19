@@ -172,37 +172,6 @@ export function Segmented<T extends string>({
   );
 }
 
-/** Headline number card: label, big value, small caption, optional progress bar. */
-export function StatCard({
-  label,
-  value,
-  caption,
-  progress,
-  icon,
-}: {
-  label: string;
-  value: ReactNode;
-  caption?: ReactNode;
-  progress?: number; // 0..1
-  icon?: ReactNode;
-}) {
-  return (
-    <Panel className="flex min-w-0 flex-col p-4">
-      <div className="flex items-center justify-between text-[13px] text-text-2">
-        <span>{label}</span>
-        {icon && <span className="text-text-3">{icon}</span>}
-      </div>
-      <div className="tnum mt-1.5 truncate text-[26px] font-medium leading-tight tracking-tight text-text">{value}</div>
-      {progress !== undefined ? (
-        <div aria-hidden className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
-          <div className="h-full rounded-full bg-btn" style={{ width: `${Math.max(2, Math.min(1, progress) * 100)}%` }} />
-        </div>
-      ) : null}
-      {caption && <div className="mt-1.5 truncate text-[12px] text-text-3">{caption}</div>}
-    </Panel>
-  );
-}
-
 /** Legend item: a small colored dot with mono text, as in the reference chart legends. */
 export function LegendDot({ color, children }: { color: string; children: ReactNode }) {
   return (

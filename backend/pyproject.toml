@@ -1,0 +1,44 @@
+[project]
+name = "kea-backend"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "aiokafka>=0.14.0",
+    "fastapi>=0.141.1",
+    "neo4j>=6.3.1",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
+    "uvicorn[standard]>=0.53.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.8",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["integration: needs docker compose infra"]
+addopts = "-m 'not integration'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka", "aiokafka.*"]
+ignore_missing_imports = true

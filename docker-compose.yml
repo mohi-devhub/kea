@@ -83,6 +83,7 @@ services:
       AUTO_INVESTIGATE: ${AUTO_INVESTIGATE:-true}
     volumes:
       - ./.llm-cache:/data/llm-cache
+      - ./eval_results:/app/eval_results
     depends_on:
       redpanda:
         condition: service_healthy

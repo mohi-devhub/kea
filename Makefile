@@ -1,4 +1,4 @@
-.PHONY: up down reset test test-int scenarios fixtures demo-check lint types api worker
+.PHONY: up down reset test test-int scenarios eval fixtures demo-check lint types api worker
 
 up:            ## full stack (redpanda, neo4j, api, worker, frontend)
 	docker compose up -d --wait redpanda neo4j
@@ -25,6 +25,9 @@ demo-check:    ## end-to-end smoke of S1-S4 through the running stack (`make up`
 
 scenarios:     ## batch-mode S1-S4 tuning-seed acceptance matrix
 	cd backend && uv run python -m scripts.run_scenarios
+
+eval:          ## held-out benchmark report (template fallback if no LLM key is configured)
+	cd backend && uv run python -m app.eval run
 
 fixtures:      ## create deterministic frontend replay fixtures from batch mode
 	cd backend && uv run python -m scripts.gen_fixtures

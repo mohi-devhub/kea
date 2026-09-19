@@ -4,7 +4,9 @@ docs/
 .env
 .sandboxes/
 .demo-repos/
-eval_results/*/llm_cache/
+# generated eval output stays local; only the held-out ledger is tracked (it keeps us honest)
+eval_results/*
+!eval_results/.heldout_log
 .venv/
 __pycache__/
 .mypy_cache/

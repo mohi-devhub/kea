@@ -1639,6 +1639,26 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/eval/results/latest": {
+      "get": {
+        "operationId": "latest_eval_eval_results_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Latest Eval Eval Results Latest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Latest Eval"
+      }
+    },
     "/events": {
       "post": {
         "operationId": "events_events_post",

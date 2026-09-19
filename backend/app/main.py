@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import json
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -648,6 +649,31 @@ def create_app() -> FastAPI:
             and (metric is None or metric == point_metric)
             for point in points
         ]
+
+    @app.get("/eval/results/latest")
+    async def latest_eval() -> dict[str, object]:
+        latest = ROOT / "eval_results" / "latest" / "report.json"
+        if not latest.exists():
+            raise HTTPException(status_code=404, detail="no eval report available")
+        try:
+            payload = json.loads(latest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=500, detail="eval report is unreadable") from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=500, detail="eval report is invalid")
+        runs_path = latest.parent / "runs.jsonl"
+        if runs_path.exists():
+            try:
+                payload["runs"] = [
+                    json.loads(line)
+                    for line in runs_path.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                ]
+            except (OSError, json.JSONDecodeError) as exc:
+                raise HTTPException(
+                    status_code=500, detail="eval run records are unreadable"
+                ) from exc
+        return payload
 
     @app.websocket("/ws")
     async def websocket(socket: WebSocket) -> None:

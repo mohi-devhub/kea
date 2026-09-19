@@ -147,7 +147,11 @@ export const useKea = create<KeaState>((set, get) => ({
     switch (m.type) {
       case "snapshot": {
         const r = m.payload.runs.at(-1);
-        if (!r) return;
+        if (!r) {
+          // server has no run (fresh start or restart): drop any stale state we still hold
+          if (s.run) set({ run: null, ...RUN_SCOPED });
+          return;
+        }
         set({
           ...RUN_SCOPED,
           run: { run_id: r.run_id, scenario: r.scenario, seed: r.seed, speed: null, status: r.status },

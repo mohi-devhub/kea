@@ -157,7 +157,14 @@ export type ScalePoint = {
   median_latency_ms: number | null;
 };
 export type ScaleReport = { points: ScalePoint[]; notes?: string[] };
-export type RcaEvalReport = { cases: number; results: EvalAggregate[]; notes?: string[] };
+export type RcaEvalReport = {
+  cases: number;
+  results: EvalAggregate[];
+  /** approach -> fault type -> [correct, total] */
+  by_fault: Record<string, Record<string, [number, number]>>;
+  cost?: Record<string, EvalCost>;
+  notes?: string[];
+};
 
 export type EvalRun = {
   approach: string;

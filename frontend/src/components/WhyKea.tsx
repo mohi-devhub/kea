@@ -27,6 +27,22 @@ function byScenario(rows: EvalAggregate[], pick: (r: EvalAggregate) => { k: numb
   }));
 }
 
+const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss" };
+
+function rcaGroups(rca: NonNullable<EvalReport["rcaeval"]>): BarGroup[] {
+  const faults = Object.keys(FAULT_LABEL);
+  const bar = (approach: string, fs: string[]) => {
+    const cells = fs.map((f) => rca.by_fault[approach]?.[f] ?? [0, 0]);
+    const k = cells.reduce((a, c) => a + c[0], 0);
+    const n = cells.reduce((a, c) => a + c[1], 0);
+    return { series: approach, value: n ? k / n : 0, text: `${k}/${n}`, detail: `${SERIES[approach].label}: ${k} of ${n}` };
+  };
+  return [{ label: "All faults", fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], fs: [f] }))].map(({ label, fs }) => ({
+    label,
+    bars: APPROACHES.filter((a) => rca.by_fault[a]).map((a) => bar(a, fs)),
+  }));
+}
+
 export function WhyKea({ report }: { report: EvalReport }) {
   const rows = report.results;
   const consistency = report.consistency;
@@ -67,7 +83,7 @@ export function WhyKea({ report }: { report: EvalReport }) {
             <LineChart title="Median latency per analysis as the topology grows" xLabel="services" yFormat={fmtMs} lines={lines((p) => p.median_latency_ms)} />
           </>
         )}
-        {rca && rca.results.length > 0 && <BarChart title="Real data replay (RCAEval): top-1 accuracy" groups={byScenario(rca.results, (r) => r.top1_correct)} />}
+        {rca && <BarChart title={`Real data replay (RCAEval RE1-OB, ${rca.cases} cases): top-1 by fault type`} groups={rcaGroups(rca)} />}
       </div>
     </section>
   );

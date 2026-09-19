@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     topology_path: Path = ROOT / "scenarios" / "topology.yaml"
     sim_speed_default: float = 10
     sim_warmup_speed: float = 200
+    run_worker_in_api: bool = True
 
 
 def get_settings() -> Settings:

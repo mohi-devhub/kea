@@ -22,16 +22,33 @@ StepCallback = Callable[[TraceEntry], Awaitable[None]]
 def _submit_spec() -> ToolSpec:
     return ToolSpec(
         name="submit_investigation",
-        description="Submit an evidence-cited investigation for the incident.",
+        description="Submit the final evidence-cited investigation for the incident.",
         parameters={
             "type": "object",
             "required": ["summary", "root_cause_candidate_id", "narrative_steps"],
             "properties": {
-                "summary": {"type": "string"},
-                "root_cause_candidate_id": {"type": ["string", "null"]},
-                "narrative_steps": {"type": "array"},
-                "caveats": {"type": "array"},
-                "disagreement": {"type": ["object", "null"]},
+                "summary": {"type": "string", "description": "One or two plain sentences."},
+                "root_cause_candidate_id": {
+                    "type": ["string", "null"],
+                    "description": "The engine's top candidate_id unless you disagree.",
+                },
+                "narrative_steps": {
+                    "type": "array",
+                    "description": "Five to eight causal steps, earliest cause first.",
+                    "items": {
+                        "type": "object",
+                        "required": ["text", "evidence_ids"],
+                        "properties": {
+                            "text": {"type": "string"},
+                            "evidence_ids": {"type": "array", "items": {"type": "string"}},
+                        },
+                    },
+                },
+                "caveats": {"type": "array", "items": {"type": "string"}},
+                "disagreement": {
+                    "type": ["object", "null"],
+                    "description": "Only if you doubt the top candidate: {reason, evidence_ids}.",
+                },
             },
         },
     )
@@ -61,11 +78,17 @@ class InvestigationAgent:
         tools = tool_context.registry() if tool_context else {}
         tool_specs = [item.spec for item in tools.values()] + [_submit_spec()]
         system = (
-            "You are Kea's investigation agent. The deterministic engine ranking is authoritative. "
-            "Use read-only tools, cite evidence IDs, do not invent probabilities, and submit a "
-            "concise "
-            "five-to-eight-step causal narrative. If you disagree with the ranking, explain why in "
-            "disagreement rather than silently reranking."
+            "You are the investigation agent for kea, an incident causality engine. A "
+            "deterministic engine has already ranked the root-cause candidates; its ranking is "
+            "authoritative and you explain it, you never re-rank. Rules: use only the incident "
+            "data and the read-only tools; cite evidence ids (like E-0001) from the incident's "
+            "evidence list in every step; every number you write (for example 14.1x or 45s) must "
+            "appear in an evidence statement, so copy numbers exactly and never use percentages "
+            "or invent figures; do not state probabilities or confidence. Put the engine's top "
+            "candidate_id in root_cause_candidate_id. If you genuinely doubt it, keep that id and "
+            "explain the concern in `disagreement` with evidence ids. Finish by calling "
+            "submit_investigation with a five-to-eight-step causal narrative, earliest cause "
+            "first."
         )
         messages = [
             Message(role="system", content=system),

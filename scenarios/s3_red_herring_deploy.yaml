@@ -1,0 +1,25 @@
+id: s3_red_herring_deploy
+title: Redis failure with red herring
+description: An unrelated notifications deployment precedes a cache failure.
+priority: P0
+warmup_s: 180
+duration_s: 185
+deployments:
+  - {offset_s: -40, service: notifications, deployment_id: dep-203, version: 2.1.0, commit_ref: deploy-203, summary: Update email templates}
+effects:
+  - {service: redis, metric: memory_used_pct, start_s: 0, ramp_s: 15, target_value: 97}
+  - {service: redis, metric: latency_p95_ms, start_s: 30, ramp_s: 15, target_multiplier: 20}
+  - {service: inventory, metric: latency_p95_ms, start_s: 55, ramp_s: 15, target_multiplier: 18}
+  - {service: inventory, metric: error_rate, start_s: 80, ramp_s: 15, target_value: 0.16}
+  - {service: checkout, metric: latency_p95_ms, start_s: 90, ramp_s: 15, target_multiplier: 6}
+  - {service: checkout, metric: error_rate, start_s: 105, ramp_s: 15, target_value: 0.22}
+  - {service: api-gateway, metric: error_rate, start_s: 125, ramp_s: 15, target_value: 0.09}
+  - {service: web-frontend, metric: error_rate, start_s: 140, ramp_s: 15, target_value: 0.06}
+  - {service: notifications, metric: latency_p95_ms, start_s: 45, ramp_s: 10, target_multiplier: 1.4}
+ground_truth:
+  expect_incident: true
+  root_cause: {kind: service_fault, service: redis}
+  must_not_implicate: [notifications, payment, postgres]
+  must_reject:
+    - {candidate_id: deployment:dep-203, reason_code: NO_ANOMALY_ON_SERVICE_OR_REACHABLE}
+  ordering_constraints: [[redis.memory_used_pct, redis.latency_p95_ms]]

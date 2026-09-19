@@ -1,0 +1,25 @@
+id: s2_postgres_degradation
+title: Postgres degradation
+description: A database fault is obscured by an earlier payment deployment.
+priority: P0
+warmup_s: 270
+duration_s: 180
+deployments:
+  - {offset_s: -90, service: payment, deployment_id: dep-171, version: 1.3.3, commit_ref: deploy-171, summary: Bump logging library}
+effects:
+  - {service: postgres, metric: latency_p95_ms, start_s: 0, ramp_s: 15, target_multiplier: 15}
+  - {service: payment, metric: latency_p95_ms, start_s: 30, ramp_s: 15, target_multiplier: 8}
+  - {service: inventory, metric: latency_p95_ms, start_s: 34, ramp_s: 15, target_multiplier: 15}
+  - {service: postgres, metric: active_connections, start_s: 45, ramp_s: 15, target_multiplier: 3}
+  - {service: checkout, metric: error_rate, start_s: 70, ramp_s: 15, target_value: 0.22}
+  - {service: payment, metric: error_rate, start_s: 90, ramp_s: 15, target_value: 0.18}
+  - {service: inventory, metric: error_rate, start_s: 95, ramp_s: 15, target_value: 0.16}
+  - {service: api-gateway, metric: error_rate, start_s: 115, ramp_s: 15, target_value: 0.09}
+  - {service: web-frontend, metric: error_rate, start_s: 135, ramp_s: 15, target_value: 0.06}
+ground_truth:
+  expect_incident: true
+  root_cause: {kind: service_fault, service: postgres}
+  must_not_implicate: [payment]
+  must_reject:
+    - {candidate_id: deployment:dep-171, reason_code: ANOMALY_EXPLAINED_BY_EARLIER_CAUSE}
+  ordering_constraints: [[postgres.latency_p95_ms, payment.latency_p95_ms]]

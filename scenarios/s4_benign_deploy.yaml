@@ -1,0 +1,16 @@
+id: s4_benign_deploy
+title: Benign deployment
+description: A harmless change and one metric spike must not open an incident.
+priority: P0
+warmup_s: 180
+duration_s: 100
+deployments:
+  - {offset_s: 0, service: checkout, deployment_id: dep-310, version: 1.8.1, commit_ref: deploy-310, summary: Copy change}
+effects:
+  - {service: checkout, metric: latency_p95_ms, start_s: 20, ramp_s: 10, target_multiplier: 1.25}
+  - {service: payment, metric: latency_p95_ms, start_s: 60, ramp_s: 0, target_multiplier: 3, duration_s: 5}
+ground_truth:
+  expect_incident: false
+  must_not_implicate: []
+  must_reject: []
+  ordering_constraints: []

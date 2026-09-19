@@ -1,0 +1,21 @@
+id: s1_bad_deploy_payment
+title: Bad payment deployment
+description: A payment deployment causes a cascading checkout outage.
+priority: P0
+warmup_s: 180
+duration_s: 210
+deployments:
+  - {offset_s: 0, service: payment, deployment_id: dep-182, version: 1.4.0, commit_ref: deploy-182, summary: Optimize payment lookup path}
+effects:
+  - {service: payment, metric: latency_p95_ms, start_s: 43, ramp_s: 15, target_multiplier: 13}
+  - {service: postgres, metric: active_connections, start_s: 68, ramp_s: 20, target_multiplier: 4.7}
+  - {service: payment, metric: error_rate, start_s: 92, ramp_s: 15, target_value: 0.18}
+  - {service: checkout, metric: error_rate, start_s: 115, ramp_s: 15, target_value: 0.22}
+  - {service: api-gateway, metric: error_rate, start_s: 137, ramp_s: 15, target_value: 0.09}
+  - {service: web-frontend, metric: error_rate, start_s: 158, ramp_s: 15, target_value: 0.06}
+ground_truth:
+  expect_incident: true
+  root_cause: {kind: deployment, service: payment, deployment_id: dep-182}
+  must_not_implicate: [notifications, redis, inventory]
+  must_reject: []
+  ordering_constraints: [[payment.latency_p95_ms, postgres.active_connections]]

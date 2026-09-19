@@ -37,8 +37,7 @@ const Row = memo(function Row({ row }: { row: TimelineItem }) {
   const setHighlight = useKea((s) => s.setHighlight);
   const selectService = useKea((s) => s.selectService);
   const { Icon, label } = KIND[row.kind];
-  // the store builds "latency latency" from humanizeMetric (lib/fmt.ts); collapse it here
-  const text = row.statement.replace("latency latency", "latency");
+  const text = row.statement;
   const body = (
     <>
       <span className="num w-[62px] shrink-0 text-[12px] text-text-3">{clock(row.ts)}</span>

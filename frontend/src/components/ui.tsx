@@ -1,10 +1,10 @@
 import { CheckCircle, Warning, XCircle } from "@phosphor-icons/react/dist/ssr";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { Health } from "@/lib/types";
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(" ");
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ComponentProps<"button"> & {
   variant?: "primary" | "secondary" | "ghost";
   busy?: boolean;
 };

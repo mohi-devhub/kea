@@ -12,7 +12,7 @@ export function score(value: number): string {
 }
 
 export function humanizeMetric(metric: string): string {
-  return metric.replace(/_p95_ms$/, " latency").replace(/_pct$/, "").replace(/_/g, " ");
+  return metric.replace(/_p95_ms$/, "").replace(/_pct$/, "").replace(/_/g, " ");
 }
 
 export const REASON_TEXT: Record<string, string> = {

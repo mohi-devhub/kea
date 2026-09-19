@@ -43,14 +43,14 @@ export function ActionBar() {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button disabled={!top} aria-pressed={pathOn} onClick={() => top && setOverlay(pathOn ? null : top.candidate_id)}>
           <Path size={14} weight="bold" aria-hidden /> {pathOn ? "Hide causal path" : "Show causal path"}
         </Button>
         <Button busy={busy === "blast"} onClick={() => act("blast", blast ? async () => setBlast(null) : loadBlast)}>
           <Graph size={14} weight="bold" aria-hidden /> {blast ? "Clear blast radius" : "Blast radius"}
         </Button>
-        <Button busy={busy === "recover"} disabled={!canRecover} title={recoverWhy} onClick={() => act("recover", recoverRun)}>
+        <Button variant="primary" busy={busy === "recover"} disabled={!canRecover} title={recoverWhy} onClick={() => act("recover", recoverRun)}>
           <ArrowUUpLeft size={14} weight="bold" aria-hidden /> Recover
         </Button>
         <Button disabled title="The investigation agent is not enabled in this build.">

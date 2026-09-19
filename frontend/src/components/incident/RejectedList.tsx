@@ -23,11 +23,13 @@ export function RejectedList({ items }: { items: RejectedCandidate[] }) {
         </h3>
       </button>
       {open && (
-        <ul id="rejected-list" className="mt-2 space-y-2">
+        <ul id="rejected-list" className="mt-2.5 space-y-2">
           {items.map((item) => (
-            <li key={item.candidate_id} className="grid grid-cols-[16px_minmax(0,1fr)] gap-x-2 text-[13px]">
-              <Prohibit size={14} weight="bold" aria-hidden className="mt-0.5 text-text-3" />
-              <span className="min-w-0 text-text-2">{item.statement}</span>
+            <li key={item.candidate_id} className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-x-2.5 rounded-lg border border-line px-3 py-2.5">
+              <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 text-text-3">
+                <Prohibit size={14} weight="bold" />
+              </span>
+              <span className="min-w-0 self-center text-[13px] leading-snug text-text-2">{item.statement}</span>
             </li>
           ))}
         </ul>

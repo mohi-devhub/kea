@@ -5,6 +5,7 @@ import {
   ArrowUUpLeft,
   Crosshair,
   Heartbeat,
+  ListBullets,
   Pulse,
   RocketLaunch,
   Siren,
@@ -12,7 +13,7 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { EmptyState } from "@/components/ui";
+import { CardHeader, cx, EmptyState } from "@/components/ui";
 import { clock } from "@/lib/fmt";
 import { TIMELINE_KINDS, useKea, type TimelineItem, type TimelineKind, type Tone } from "@/lib/store";
 
@@ -25,11 +26,12 @@ const KIND: Record<TimelineKind, { label: string; Icon: Icon }> = {
   log: { label: "Logs", Icon: Terminal },
   prediction: { label: "Predictions", Icon: Crosshair },
 };
-const TONE_TEXT: Record<Tone, string> = {
-  neutral: "text-text-2",
-  ok: "text-ok",
-  warn: "text-warn",
-  bad: "text-bad",
+// Tone is icon plus tint plus a screen-reader word, never color alone.
+const TONE_CHIP: Record<Tone, string> = {
+  neutral: "bg-surface-2 text-text-2",
+  ok: "bg-ok-bg text-ok",
+  warn: "bg-warn-bg text-warn",
+  bad: "bg-bad-bg text-bad",
 };
 const STICK_PX = 24;
 
@@ -37,20 +39,22 @@ const Row = memo(function Row({ row }: { row: TimelineItem }) {
   const setHighlight = useKea((s) => s.setHighlight);
   const selectService = useKea((s) => s.selectService);
   const { Icon, label } = KIND[row.kind];
-  const text = row.statement;
   const body = (
     <>
       <span className="num w-[62px] shrink-0 text-[12px] text-text-3">{clock(row.ts)}</span>
-      <Icon size={14} weight="bold" aria-label={label} className={`shrink-0 ${TONE_TEXT[row.tone]}`} />
-      <span className="min-w-0 flex-1 truncate text-[13px]" title={text}>
-        {text}
+      <span aria-hidden className={cx("grid h-6 w-6 shrink-0 place-items-center rounded-full", TONE_CHIP[row.tone])}>
+        <Icon size={13} weight="bold" />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-text" title={row.statement}>
+        <span className="sr-only">{label}: </span>
+        {row.statement}
       </span>
       {row.service && (
-        <span className="num shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] text-text-2">{row.service}</span>
+        <span className="num shrink-0 rounded-md border border-line px-1.5 py-0.5 text-[11px] text-text-2">{row.service}</span>
       )}
     </>
   );
-  const base = "flex w-full items-center gap-2 px-4 py-1.5 text-left";
+  const base = "flex h-[38px] w-full items-center gap-3 px-4 text-left";
   if (!row.service) return <li className={base}>{body}</li>;
   const service = row.service;
   return (
@@ -114,31 +118,35 @@ export function Timeline() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-2">
-        <h2 className="mr-1 text-[12px] font-medium text-text-3">Timeline</h2>
-        <div role="group" aria-label="Filter timeline" className="flex flex-wrap items-center gap-1">
-          {TIMELINE_KINDS.map((k) => {
-            const { Icon, label } = KIND[k];
-            const on = filters[k];
-            return (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={on}
-                onClick={() => toggleFilter(k)}
-                className={[
-                  "pressable inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-medium",
-                  on
-                    ? "border-line-strong bg-surface-2 text-text"
-                    : "border-line text-text-3 [@media(hover:hover)]:hover:text-text-2",
-                ].join(" ")}
-              >
-                <Icon size={12} weight="bold" aria-hidden />
-                {label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="shrink-0 border-b border-line pb-3">
+        <CardHeader
+          icon={<ListBullets size={20} weight="bold" />}
+          title="Timeline"
+          right={
+            <div role="group" aria-label="Filter timeline" className="flex items-center gap-0.5">
+              {TIMELINE_KINDS.map((k) => {
+                const { Icon, label } = KIND[k];
+                const on = filters[k];
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={label}
+                    title={label}
+                    onClick={() => toggleFilter(k)}
+                    className={cx(
+                      "pressable grid h-8 w-8 place-items-center rounded-lg",
+                      on ? "bg-surface-2 text-text" : "text-text-3 [@media(hover:hover)]:hover:text-text-2",
+                    )}
+                  >
+                    <Icon size={15} weight="bold" aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
       </div>
 
       <div ref={scroller} onScroll={onScroll} className="scroll-quiet min-h-0 flex-1 overflow-y-auto py-1">
@@ -149,7 +157,7 @@ export function Timeline() {
         <button
           type="button"
           onClick={jump}
-          className="pressable absolute bottom-3 right-4 inline-flex h-7 items-center gap-1 rounded-full border border-line-strong bg-surface px-3 text-[12px] font-medium text-text [@media(hover:hover)]:hover:bg-surface-2"
+          className="pressable absolute bottom-3 right-4 inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[12px] font-medium text-text shadow-card [@media(hover:hover)]:hover:bg-surface-2"
         >
           <ArrowDown size={12} weight="bold" aria-hidden />
           Jump to latest

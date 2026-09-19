@@ -5,6 +5,8 @@ import type {
   BlastRadius,
   Health,
   Incident,
+  InvestigationState,
+  AgentTrace,
   MetricPoint,
   Prediction,
   PredictionVerification,
@@ -67,6 +69,7 @@ type KeaState = {
   watching: string | null;
   prediction: PredictionState | null;
   verification: PredictionVerification | null;
+  investigation: InvestigationState | null;
   timeline: TimelineItem[];
   deployments: RawEvent[];
   // hot path, kept in its own fields so graph selectors never see it change
@@ -84,6 +87,7 @@ type KeaState = {
   applyMessage: (m: WsMessage) => void;
   clearRun: () => void;
   setPreview: (p: Prediction | null) => void;
+  beginInvestigation: (investigationId: string) => void;
   selectService: (name: string | null) => void;
   setOverlay: (candidateId: string | null) => void;
   setBlast: (b: BlastRadius | null) => void;
@@ -106,6 +110,7 @@ const RUN_SCOPED = {
   watching: null as string | null,
   prediction: null as PredictionState | null,
   verification: null as PredictionVerification | null,
+  investigation: null as InvestigationState | null,
   timeline: [] as TimelineItem[],
   deployments: [] as RawEvent[],
   metricsLatest: {} as Record<string, MetricPoint>,
@@ -138,6 +143,15 @@ export const useKea = create<KeaState>((set, get) => ({
   clearRun: () => set({ run: null, ...RUN_SCOPED }),
   setPreview: (p) =>
     set((s) => (s.prediction?.frozen ? s : { prediction: p ? { ...p, frozen: false } : null })),
+  beginInvestigation: (investigationId) =>
+    set({
+      investigation: {
+        investigation_id: investigationId,
+        status: "running",
+        result: null,
+        steps: [],
+      },
+    }),
   selectService: (name) => set({ selectedService: name }),
   setOverlay: (candidateId) => set({ overlayCandidateId: candidateId }),
   setBlast: (blast) => set({ blast }),
@@ -275,6 +289,42 @@ export const useKea = create<KeaState>((set, get) => ({
         set({ verification: m.payload });
         push(item(m.sim_ts, "prediction", m.payload.verdict === "confirmed" ? "ok" : "warn", `Prediction ${m.payload.verdict}`));
         return;
+      case "agent.step": {
+        const step = m.payload as AgentTrace & { investigation_id: string };
+        const current = s.investigation;
+        set({
+          investigation: {
+            investigation_id: step.investigation_id,
+            status: "running",
+            result: current?.result ?? null,
+            steps: [...(current?.steps ?? []), step],
+          },
+        });
+        return;
+      }
+      case "agent.done": {
+        if (!("mode" in m.payload)) {
+          set({
+            investigation: {
+              investigation_id: m.payload.investigation_id,
+              status: "failed",
+              result: null,
+              steps: s.investigation?.steps ?? [],
+              error: m.payload.error,
+            },
+          });
+          return;
+        }
+        set({
+          investigation: {
+            investigation_id: m.payload.investigation_id,
+            status: "completed",
+            result: m.payload,
+            steps: m.payload.trace,
+          },
+        });
+        return;
+      }
     }
   },
 }));

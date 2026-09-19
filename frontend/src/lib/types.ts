@@ -70,7 +70,9 @@ export type WsMessage =
   | Env<"service.health", { service: string; health: Health }>
   | Env<"incident.opened" | "incident.updated" | "incident.resolved", Incident>
   | Env<"prediction.made", Prediction>
-  | Env<"prediction.verified", PredictionVerification>;
+  | Env<"prediction.verified", PredictionVerification>
+  | Env<"agent.step", { investigation_id: string } & AgentTrace>
+  | Env<"agent.done", InvestigationResult | { investigation_id: string; status: "failed"; error: string }>;
 
 export type BlastRadius = {
   customer_facing_affected: string[];
@@ -84,4 +86,15 @@ export type BlastRadius = {
 export type PredictionView = Prediction & {
   frozen: boolean;
   verification: PredictionVerification | null;
+};
+
+export type AgentTrace = S["TraceEntry"];
+export type InvestigationResult = S["InvestigationResult"];
+
+export type InvestigationState = {
+  investigation_id: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  result: InvestigationResult | null;
+  steps: AgentTrace[];
+  error?: string | null;
 };

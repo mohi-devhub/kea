@@ -1,5 +1,11 @@
 import { API_URL } from "@/lib/config";
-import type { BlastRadius, PredictionView, ScenarioInfo, TopologyResponse } from "@/lib/types";
+import type {
+  BlastRadius,
+  InvestigationResult,
+  PredictionView,
+  ScenarioInfo,
+  TopologyResponse,
+} from "@/lib/types";
 
 /** Backend errors use `{error: {code, message}}` (CONTRACTS section 3). */
 export class ApiError extends Error {
@@ -39,4 +45,18 @@ export const api = {
   reset: () => request<{ status: string }>("/reset", { method: "POST" }),
   blastRadius: (incidentId: string) => request<BlastRadius>(`/incidents/${incidentId}/blast-radius`),
   prediction: (incidentId: string) => request<PredictionView>(`/incidents/${incidentId}/prediction`),
+  investigate: (incidentId: string) =>
+    request<{ investigation_id: string; incident_id: string; status: string }>(
+      `/incidents/${incidentId}/investigate`,
+      { method: "POST" },
+    ),
+  investigation: (investigationId: string) =>
+    request<{
+      investigation_id: string;
+      incident_id: string;
+      run_id: string;
+      status: string;
+      result: InvestigationResult | null;
+      error: string | null;
+    }>(`/investigations/${investigationId}`),
 };

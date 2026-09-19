@@ -136,7 +136,28 @@ export type EvalReport = {
   engine_config?: { weights?: number[]; [key: string]: unknown };
   limitations: string[];
   runs?: EvalRun[];
+  cost?: Record<string, EvalCost>;
+  consistency?: Pick<EvalReport, "results" | "cost" | "meta">;
+  scale?: ScaleReport;
+  rcaeval?: RcaEvalReport;
 };
+
+export type EvalCost = {
+  analyses: number;
+  median_latency_ms: number | null;
+  median_tokens: number | null;
+  total_tokens: number;
+};
+export type ScalePoint = {
+  services: number;
+  approach: string;
+  n: number;
+  top1_correct: number;
+  median_tokens: number | null;
+  median_latency_ms: number | null;
+};
+export type ScaleReport = { points: ScalePoint[]; notes?: string[] };
+export type RcaEvalReport = { cases: number; results: EvalAggregate[]; notes?: string[] };
 
 export type EvalRun = {
   approach: string;

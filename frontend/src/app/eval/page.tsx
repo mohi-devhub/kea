@@ -2,6 +2,7 @@
 
 import { ChartBar, WarningCircle } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { WhyKea } from "@/components/WhyKea";
 import { Badge, CardHeader, EmptyState, Panel } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import type { EvalAggregate, EvalMetric, EvalReport, EvalRun } from "@/lib/types";
@@ -38,6 +39,7 @@ export default function EvalPage() {
       </Panel>
       {report && (
         <>
+          <WhyKea report={report} />
           <Methodology report={report} />
           <RunDrilldown runs={report.runs ?? []} />
         </>

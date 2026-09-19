@@ -97,7 +97,7 @@ export function TopologyGraph() {
             name: svc.name,
             kind: svc.kind,
             customerFacing: svc.customer_facing,
-            health: health[svc.name] ?? svc.health,
+            health: health[svc.name] ?? "healthy", // live store only: the topology response can carry a past run's health
             dim: overlayOn && !path.nodeOrder.has(svc.name),
             pathIndex: overlayOn ? (path.nodeOrder.get(svc.name) ?? null) : null,
             blast: blastServices.has(svc.name),

@@ -76,6 +76,7 @@ class EngineState:
     incident: Incident | None = None
     _last_incident_activity_ts: int = 0
     _incident_active_ids: tuple[str, ...] = ()
+    _member_ids: set[str] = field(default_factory=set)
     _pending_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -227,7 +228,8 @@ class EngineState:
                     {"anomaly_ids": ",".join(active_ids)},
                 )
         elif self.incident is None and qualifies:
-            self.incident = self._build_incident(active, revision=1, opened_ts=event.ts)
+            self._member_ids |= set(active_ids)
+            self.incident = self._build_incident(self._members(), revision=1, opened_ts=event.ts)
             self._last_incident_activity_ts = event.ts
             self._incident_active_ids = active_ids
             self._pending_ids = ()
@@ -238,8 +240,11 @@ class EngineState:
             and active
             and active_ids != self._incident_active_ids
         ):
+            self._member_ids |= set(active_ids)
             self.incident = self._build_incident(
-                active, revision=self.incident.revision + 1, opened_ts=self.incident.opened_ts
+                self._members(),
+                revision=self.incident.revision + 1,
+                opened_ts=self.incident.opened_ts,
             )
             self._last_incident_activity_ts = event.ts
             self._incident_active_ids = active_ids
@@ -254,6 +259,14 @@ class EngineState:
                     }
                 )
                 self._emit(event, "incident_resolved", {"incident_id": self.incident.incident_id})
+
+    def _members(self) -> list[Anomaly]:
+        """All anomalies that joined the incident, active or healed (ranking must not drift as
+        the root cause heals first and leaves downstream anomalies looking like roots)."""
+        return sorted(
+            (a for a in self.anomalies if a.anomaly_id in self._member_ids),
+            key=lambda anomaly: (anomaly.onset_ts, anomaly.anomaly_id),
+        )
 
     def _emit(self, event: MetricEvent, update_type: str, payload: dict[str, str]) -> None:
         self.updates.append(

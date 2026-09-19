@@ -2,11 +2,13 @@
 
 import argparse
 import asyncio
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.config import ROOT, get_settings
+from app.config import ROOT, Settings, get_settings
 from app.eval.runner import EvalRunner, parse_seed_spec, write_artifacts
+from app.eval.scale import run_sweep
 from app.llm.factory import provider_for_settings
 
 
@@ -26,14 +28,35 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--dry-run", action="store_true")
     run.add_argument("--yes", action="store_true")
     run.add_argument("--output", type=Path, default=None)
+    scale = commands.add_parser("scale", help="run the scale sweep")
+    scale.add_argument("--seeds", default="0-4")
+    scale.add_argument("--approaches", default="engine,llm_raw,llm_raw_topology")
+    scale.add_argument(
+        "--output", type=Path, default=ROOT / "eval_results" / "latest" / "scale.json"
+    )
     return parser
+
+
+def _scale(args: argparse.Namespace, settings: Settings) -> None:
+    report = asyncio.run(
+        run_sweep(
+            EvalRunner(settings),
+            parse_seed_spec(args.seeds),
+            [item.strip() for item in args.approaches.split(",") if item.strip()],
+            baseline_provider=provider_for_settings(settings, "baseline"),
+        )
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"Wrote {args.output}")
 
 
 def main() -> None:
     args = _parser().parse_args()
-    if args.command != "run":
-        raise SystemExit(2)
     settings = get_settings()
+    if args.command == "scale":
+        _scale(args, settings)
+        return
     runner = EvalRunner(settings)
     scenarios = runner.select_scenarios(args.scenarios)
     seeds = parse_seed_spec(args.seeds)

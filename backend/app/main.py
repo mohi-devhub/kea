@@ -679,7 +679,9 @@ def create_app() -> FastAPI:
                 try:
                     payload[name] = json.loads(sidecar.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError) as exc:
-                    raise HTTPException(status_code=500, detail=f"{name}.json is unreadable") from exc
+                    raise HTTPException(
+                        status_code=500, detail=f"{name}.json is unreadable"
+                    ) from exc
         return payload
 
     @app.websocket("/ws")

@@ -55,7 +55,7 @@ export function WhyKea({ report }: { report: EvalReport }) {
         <h2 className="text-[18px] font-normal tracking-[-0.01em] text-text">Where kea differs from an LLM</h2>
         <p className="text-[13px] text-text-2">Accuracy is a tie on the cases an LLM can read. The gap is false alarms, repeatability, cost and speed.</p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid items-start gap-3 md:grid-cols-2">
         <BarChart title="False alarms on a healthy deploy (lower is better)" groups={byScenario(rows, (r) => r.false_alarm, (s) => s.startsWith("s4"))} />
         <BarChart title="Top-1 root cause accuracy by scenario" groups={byScenario(rows, (r) => r.top1_correct)} />
         {consistencyGroups.length > 0 && <BarChart title="Run-to-run agreement, same input run 5 times" groups={consistencyGroups} />}
@@ -64,6 +64,7 @@ export function WhyKea({ report }: { report: EvalReport }) {
           <>
             <LineChart title="Accuracy as the topology grows" xLabel="services" yMax={1} yFormat={pct} lines={lines((p) => p.top1_correct)} />
             <LineChart title="Median tokens per analysis as the topology grows" xLabel="services" yFormat={(v) => `${Math.round(v / 100) / 10}k`} lines={lines((p) => p.median_tokens)} />
+            <LineChart title="Median latency per analysis as the topology grows" xLabel="services" yFormat={fmtMs} lines={lines((p) => p.median_latency_ms)} />
           </>
         )}
         {rca && rca.results.length > 0 && <BarChart title="Real data replay (RCAEval): top-1 accuracy" groups={byScenario(rca.results, (r) => r.top1_correct)} />}

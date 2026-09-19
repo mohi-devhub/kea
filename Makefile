@@ -16,11 +16,12 @@ reset:         ## wipe volumes; topology is reseeded when the api starts
 test:          ## fast unit tests, no infra needed
 	cd backend && uv run pytest -q
 
-test-int:      ## needs `make up`
+test-int:      ## needs redpanda+neo4j; stops api/worker/frontend (they would steal the test's consumer group and /reset wipes shared Neo4j)
+	docker compose stop api worker frontend
 	cd backend && uv run pytest -q -m integration
 
-demo-check:    ## M2 live-stack smoke checks
-	cd backend && uv run pytest -q -m integration
+demo-check:    ## end-to-end smoke of S1-S4 through the running stack (`make up` first)
+	cd backend && uv run python -m scripts.demo_check
 
 scenarios:     ## batch-mode S1-S4 tuning-seed acceptance matrix
 	cd backend && uv run python -m scripts.run_scenarios

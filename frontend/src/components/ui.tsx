@@ -6,11 +6,12 @@ const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).j
 
 type ButtonProps = ComponentProps<"button"> & {
   variant?: "primary" | "secondary" | "ghost";
+  size?: "md" | "icon";
   busy?: boolean;
 };
 
 /** Solid primary, bordered secondary, quiet ghost. 6px radius, no shadow, press feedback. */
-export function Button({ variant = "secondary", busy, className, children, disabled, ...rest }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", busy, className, children, disabled, ...rest }: ButtonProps) {
   const look = {
     primary: "bg-btn text-btn-text [@media(hover:hover)]:hover:bg-btn-hover border border-transparent",
     secondary: "bg-transparent text-text border border-line-strong [@media(hover:hover)]:hover:bg-surface-2",
@@ -22,7 +23,8 @@ export function Button({ variant = "secondary", busy, className, children, disab
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        "pressable inline-flex h-8 items-center gap-1.5 rounded-control px-3 text-[13px] font-medium",
+        "pressable inline-flex h-8 items-center gap-1.5 rounded-control text-[13px] font-medium",
+        size === "icon" ? "w-8 justify-center" : "px-3",
         "disabled:cursor-not-allowed disabled:opacity-45",
         look,
         className,

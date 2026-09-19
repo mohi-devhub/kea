@@ -107,7 +107,7 @@ export function Header() {
           Sim <span className="num text-text">{simTs ? clock(simTs) : "--:--:--"}</span>
         </span>
         <Badge tone={connOk ? "ok" : "warn"}>{connLabel}</Badge>
-        <Button variant="ghost" className="w-8 px-0" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
           {theme === "dark" ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
         </Button>
       </div>

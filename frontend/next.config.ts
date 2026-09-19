@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  devIndicators: false, // the dev badge overlaps the timeline in screenshots and demos
 };
 
 export default nextConfig;

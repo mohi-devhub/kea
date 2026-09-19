@@ -119,6 +119,32 @@ class Incident(BaseModel):
     evidence: list[Evidence]
 
 
+PredictionOutcome = Literal[
+    "healed_as_predicted",
+    "unchanged_as_predicted",
+    "missed_heal",
+    "unexpected_heal",
+]
+
+
+class Prediction(BaseModel):
+    prediction_id: str
+    incident_id: str
+    incident_revision: int
+    candidate_id: str
+    low_margin: bool
+    predicted_healed: list[str]
+    predicted_unchanged: list[str]
+    made_ts: int
+
+
+class PredictionVerification(BaseModel):
+    prediction_id: str
+    verdict: Literal["confirmed", "partial", "refuted", "inconclusive"]
+    outcomes: list[dict[str, str | PredictionOutcome]]
+    verified_ts: int
+
+
 class EngineUpdate(BaseModel):
     run_id: str
     seq: int

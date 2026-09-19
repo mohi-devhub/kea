@@ -77,6 +77,8 @@ WsType = Literal[
     "incident.opened",
     "incident.updated",
     "incident.resolved",
+    "prediction.made",
+    "prediction.verified",
     "agent.step",
     "agent.done",
     "fix.state",

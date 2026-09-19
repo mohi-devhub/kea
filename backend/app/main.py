@@ -673,6 +673,13 @@ def create_app() -> FastAPI:
                 raise HTTPException(
                     status_code=500, detail="eval run records are unreadable"
                 ) from exc
+        for name in ("consistency", "scale", "rcaeval"):  # optional sidecar measurements
+            sidecar = latest.parent / f"{name}.json"
+            if sidecar.exists():
+                try:
+                    payload[name] = json.loads(sidecar.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise HTTPException(status_code=500, detail=f"{name}.json is unreadable") from exc
         return payload
 
     @app.websocket("/ws")

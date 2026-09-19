@@ -3,6 +3,7 @@
 import { WarningCircle } from "@phosphor-icons/react";
 import { Badge, CardHeader, EmptyState, Segmented } from "@/components/ui";
 import { type Tab, useKea } from "@/lib/store";
+import { InvestigateTab } from "./InvestigateTab";
 import { OverviewTab } from "./OverviewTab";
 
 const TABS: { value: Tab; label: string }[] = [
@@ -39,7 +40,7 @@ export function IncidentPanel() {
       </div>
       <div role="tabpanel" aria-label={`${tab} tab`} tabIndex={0} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {tab === "overview" && <OverviewTab />}
-        {tab === "investigate" && <EmptyState>The investigation agent is not enabled in this build.</EmptyState>}
+        {tab === "investigate" && <InvestigateTab />}
         {tab === "fix" && <EmptyState>No fix proposal available yet.</EmptyState>}
       </div>
     </div>

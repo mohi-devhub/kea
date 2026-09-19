@@ -3,6 +3,7 @@
 import { ArrowUUpLeft, Graph, MagnifyingGlass, Path } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
+import { api } from "@/lib/api";
 import { errorText, loadBlast, recoverRun } from "@/lib/session";
 import { selectCanRecover, useKea } from "@/lib/store";
 
@@ -15,7 +16,9 @@ export function ActionBar() {
   const setOverlay = useKea((s) => s.setOverlay);
   const blast = useKea((s) => s.blast);
   const setBlast = useKea((s) => s.setBlast);
-  const [busy, setBusy] = useState<"blast" | "recover" | null>(null);
+  const setTab = useKea((s) => s.setTab);
+  const beginInvestigation = useKea((s) => s.beginInvestigation);
+  const [busy, setBusy] = useState<"blast" | "recover" | "investigate" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!incident) return null;
@@ -41,6 +44,21 @@ export function ActionBar() {
     }
   };
 
+  const investigate = async () => {
+    if (busy || mode === "fixture") return;
+    setBusy("investigate");
+    setError(null);
+    try {
+      const started = await api.investigate(incident.incident_id);
+      beginInvestigation(started.investigation_id);
+      setTab("investigate");
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div>
       <div className="grid grid-cols-2 gap-2">
@@ -53,7 +71,12 @@ export function ActionBar() {
         <Button variant="primary" busy={busy === "recover"} disabled={!canRecover} title={recoverWhy} onClick={() => act("recover", recoverRun)}>
           <ArrowUUpLeft size={14} weight="bold" aria-hidden /> Recover
         </Button>
-        <Button disabled title="The investigation agent is not enabled in this build.">
+        <Button
+          busy={busy === "investigate"}
+          disabled={mode === "fixture"}
+          title={mode === "fixture" ? "Investigation needs the live API" : "Run the evidence-backed investigation"}
+          onClick={investigate}
+        >
           <MagnifyingGlass size={14} weight="bold" aria-hidden /> Investigate
         </Button>
       </div>

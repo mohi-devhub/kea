@@ -26,6 +26,9 @@ class Message(BaseModel):
     content: str = ""
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_call_id: str | None = None
+    # Provider-native output items (for example OpenAI reasoning and function_call items) that a
+    # stateless API needs echoed back on the next turn. Excluded from dumps and cache keys.
+    raw: list[dict[str, Any]] | None = Field(default=None, exclude=True)
 
 
 class LLMRequest(BaseModel):

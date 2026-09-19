@@ -1,8 +1,9 @@
-.PHONY: up down reset test test-int scenarios fixtures lint types api
+.PHONY: up down reset test test-int scenarios fixtures demo-check lint types api worker
 
-up:            ## infra (redpanda, neo4j); api/worker/frontend run on the host in dev
+up:            ## full stack (redpanda, neo4j, api, worker, frontend)
 	docker compose up -d --wait redpanda neo4j
 	docker compose up redpanda-init
+	docker compose up -d --build --wait api worker frontend
 
 down:
 	docker compose down
@@ -16,6 +17,9 @@ test:          ## fast unit tests, no infra needed
 	cd backend && uv run pytest -q
 
 test-int:      ## needs `make up`
+	cd backend && uv run pytest -q -m integration
+
+demo-check:    ## M2 live-stack smoke checks
 	cd backend && uv run pytest -q -m integration
 
 scenarios:     ## batch-mode S1-S4 tuning-seed acceptance matrix
@@ -34,3 +38,6 @@ types:          ## export OpenAPI and regenerate frontend types
 
 api:
 	cd backend && uv run uvicorn app.main:app --reload --port 8000
+
+worker:
+	cd backend && uv run python -m app.stream.worker

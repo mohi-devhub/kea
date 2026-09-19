@@ -12,11 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import TypeAdapter, ValidationError
 
+from app.agent.models import InvestigationResult, TraceEntry
+from app.agent.runner import InvestigationAgent
+from app.agent.tools import ToolContext
 from app.api.store import RunStore, RunView
 from app.api.views import scenario_info, topology_response
 from app.config import ROOT, get_settings
 from app.engine.prediction import make_prediction, verify_prediction
 from app.graph import client as graph
+from app.llm.factory import provider_for_settings
 from app.models.api import (
     HealthResponse,
     ScenarioInfo,
@@ -75,6 +79,11 @@ async def _update_reader(app: FastAPI) -> None:
         app.state.settings.kafka_bootstrap, kafka.TOPIC_UPDATES, "kea-api-updates"
     ):
         await app.state.store.update(raw)
+        if raw.get("type") == "incident_opened" and app.state.settings.auto_investigate:
+            run_id = str(raw.get("run_id"))
+            view = app.state.store.runs.get(run_id)
+            if view is not None and view.incident is not None:
+                await app.state.launch_investigation(view)
         if raw.get("type") != "incident_resolved":
             continue
         run_id = str(raw.get("run_id"))
@@ -113,6 +122,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.stop_events = {}
     app.state.run_tasks = {}
     app.state.run_meta = {}
+    app.state.investigations = {}
+    app.state.agent_tasks = {}
+    app.state.agent = InvestigationAgent(settings.agent_max_steps)
+    app.state.llm_provider = provider_for_settings(settings)
     app.state.tasks = []
     if await graph.ping(app.state.driver):
         await graph.init_schema(app.state.driver)
@@ -133,9 +146,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             event.set()
         for task in app.state.run_tasks.values():
             task.cancel()
+        for task in app.state.agent_tasks.values():
+            task.cancel()
         for task in app.state.tasks:
             task.cancel()
         for task in app.state.tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        for task in app.state.agent_tasks.values():
             with contextlib.suppress(asyncio.CancelledError):
                 await task
         await app.state.store.flush_metrics(force=True)
@@ -374,9 +392,13 @@ def create_app() -> FastAPI:
             event.set()
         for task in app.state.run_tasks.values():
             task.cancel()
+        for task in app.state.agent_tasks.values():
+            task.cancel()
         app.state.stop_events.clear()
         app.state.run_tasks.clear()
         app.state.run_meta.clear()
+        app.state.agent_tasks.clear()
+        app.state.investigations.clear()
         await app.state.store.flush_metrics(force=True)
         app.state.store.runs.clear()
         await graph.reset_runs(app.state.driver)
@@ -406,6 +428,113 @@ def create_app() -> FastAPI:
             if view.incident and view.incident.incident_id == incident_id:
                 return view
         return None
+
+    async def launch_investigation(view: RunView) -> str:
+        incident = view.incident
+        if incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        incident_id = incident.incident_id
+        investigation_id = f"INV-{uuid.uuid4().hex[:10]}"
+        app.state.investigations[investigation_id] = {
+            "investigation_id": investigation_id,
+            "incident_id": incident_id,
+            "run_id": view.run_id,
+            "status": "running",
+            "result": None,
+            "error": None,
+        }
+
+        async def emit_step(entry: TraceEntry) -> None:
+            await app.state.store.broadcast(
+                {
+                    "type": "agent.step",
+                    "run_id": view.run_id,
+                    "seq": entry.step,
+                    "sim_ts": view.sim_ts,
+                    "payload": {
+                        "investigation_id": investigation_id,
+                        **entry.model_dump(mode="json"),
+                    },
+                }
+            )
+
+        async def run_agent() -> None:
+            record = app.state.investigations[investigation_id]
+            try:
+                result = await app.state.agent.investigate(
+                    incident,
+                    investigation_id=investigation_id,
+                    provider=app.state.llm_provider,
+                    tool_context=ToolContext(view, app.state.topology),
+                    on_step=emit_step,
+                )
+                record["status"] = "completed"
+                record["result"] = result
+                await app.state.store.broadcast(
+                    {
+                        "type": "agent.done",
+                        "run_id": view.run_id,
+                        "seq": len(result.trace),
+                        "sim_ts": view.sim_ts,
+                        "payload": result.model_dump(mode="json"),
+                    }
+                )
+            except asyncio.CancelledError:
+                record["status"] = "cancelled"
+                raise
+            except Exception as exc:  # keep the API record inspectable on agent failures
+                record["status"] = "failed"
+                record["error"] = str(exc)
+                await app.state.store.broadcast(
+                    {
+                        "type": "agent.done",
+                        "run_id": view.run_id,
+                        "seq": 0,
+                        "sim_ts": view.sim_ts,
+                        "payload": {
+                            "investigation_id": investigation_id,
+                            "incident_id": incident_id,
+                            "status": "failed",
+                            "error": str(exc),
+                        },
+                    }
+                )
+            finally:
+                app.state.agent_tasks.pop(investigation_id, None)
+
+        app.state.agent_tasks[investigation_id] = asyncio.create_task(run_agent())
+        return investigation_id
+
+    app.state.launch_investigation = launch_investigation
+
+    @app.post("/incidents/{incident_id}/investigate")
+    async def investigate(incident_id: str) -> dict[str, object]:
+        view = find_incident(incident_id)
+        if view is None or view.incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        investigation_id = await launch_investigation(view)
+        return {
+            "investigation_id": investigation_id,
+            "incident_id": incident_id,
+            "status": "running",
+        }
+
+    @app.get("/investigations/{investigation_id}")
+    async def investigation(investigation_id: str) -> dict[str, object]:
+        record = app.state.investigations.get(investigation_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="investigation not found")
+        result = record.get("result")
+        return {
+            "investigation_id": investigation_id,
+            "incident_id": record["incident_id"],
+            "run_id": record["run_id"],
+            "status": record["status"],
+            "result": result.model_dump(mode="json")
+            if isinstance(result, InvestigationResult)
+            else None,
+            "error": record.get("error"),
+        }
 
     @app.get("/incidents/{incident_id}/timeline")
     async def timeline(incident_id: str) -> list[dict[str, object]]:

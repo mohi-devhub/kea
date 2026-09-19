@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     sim_speed_default: float = 10
     sim_warmup_speed: float = 200
     run_worker_in_api: bool = True
+    # M4 starts in deterministic template mode. Provider adapters can be enabled
+    # explicitly once a model and key are configured.
+    llm_provider: str = "template"
+    llm_model: str = "CHANGE_ME"
+    llm_cache_mode: str = "off"
+    llm_cache_dir: Path = ROOT / "data" / "llm-cache"
+    auto_investigate: bool = True
+    agent_max_steps: int = 12
 
 
 def get_settings() -> Settings:

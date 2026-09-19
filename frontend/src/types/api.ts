@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Events */
+        post: operations["events_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/graph/{service}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Graph View */
+        get: operations["graph_view_graph__service__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -21,6 +55,196 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Incidents */
+        get: operations["incidents_incidents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Incident */
+        get: operations["incident_incidents__incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}/blast-radius": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Blast Radius */
+        get: operations["blast_radius_incidents__incident_id__blast_radius_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}/causal-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Causal Path */
+        get: operations["causal_path_incidents__incident_id__causal_path_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}/prediction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prediction
+         * @description Frozen prediction after Recover; before that, a live preview (`frozen: false`).
+         */
+        get: operations["prediction_incidents__incident_id__prediction_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Timeline */
+        get: operations["timeline_incidents__incident_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset */
+        post: operations["reset_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run */
+        get: operations["run_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_runs__run_id__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recover */
+        post: operations["recover_runs__run_id__recover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{run_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop */
+        post: operations["stop_runs__run_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scenarios": {
         parameters: {
             query?: never;
@@ -32,6 +256,40 @@ export interface paths {
         get: operations["scenarios_scenarios_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/services/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Service Detail */
+        get: operations["service_detail_services__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/simulate/{scenario}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate */
+        post: operations["simulate_simulate__scenario__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -59,6 +317,237 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Anomaly */
+        Anomaly: {
+            /** Anomaly Id */
+            anomaly_id: string;
+            /** Baseline */
+            baseline: number;
+            /** Detected Ts */
+            detected_ts: number;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct";
+            /** Onset Ts */
+            onset_ts: number;
+            /** Peak Value */
+            peak_value: number;
+            /** Ratio */
+            ratio: number;
+            /**
+             * Resolved Ts
+             * @default null
+             */
+            resolved_ts: number | null;
+            /** Run Id */
+            run_id: string;
+            /** Service */
+            service: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "active" | "resolved";
+        };
+        /** BlastRadius */
+        BlastRadius: {
+            /** Customer Facing Affected */
+            customer_facing_affected: string[];
+            /** Services */
+            services: string[];
+        };
+        /** Candidate */
+        Candidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Chain */
+            chain: components["schemas"]["ChainStep"][];
+            /** Covered Anomaly Ids */
+            covered_anomaly_ids: string[];
+            /**
+             * Deployment Id
+             * @default null
+             */
+            deployment_id: string | null;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Factors */
+            factors: {
+                [key: string]: components["schemas"]["Factor"];
+            };
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deployment" | "service_fault";
+            /** Rank */
+            rank: number;
+            /** Root Anomaly Ids */
+            root_anomaly_ids: string[];
+            /** Score */
+            score: number;
+            /** Service */
+            service: string;
+        };
+        /** ChainStep */
+        ChainStep: {
+            /**
+             * Node Type
+             * @enum {string}
+             */
+            node_type: "deployment" | "anomaly" | "service";
+            /** Ref */
+            ref: string;
+            /** Service */
+            service: string;
+            /** Statement */
+            statement: string;
+            /** Step */
+            step: number;
+            /** Ts */
+            ts: number;
+            /**
+             * Via
+             * @enum {string}
+             */
+            via: "change" | "self" | "fault" | "load";
+        };
+        /** ChangeItem */
+        ChangeItem: {
+            /**
+             * Candidate Id
+             * @default null
+             */
+            candidate_id: string | null;
+            /** Deployment Id */
+            deployment_id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "deployment";
+            /**
+             * Reason
+             * @default null
+             */
+            reason: ("NO_ANOMALY_ON_SERVICE_OR_REACHABLE" | "ANOMALY_EXPLAINED_BY_EARLIER_CAUSE" | "OUTSIDE_LOOKBACK_WINDOW" | "ANOMALY_PRECEDES_DEPLOYMENT") | null;
+            /** Relevant */
+            relevant: boolean;
+            /** Seconds Before Onset */
+            seconds_before_onset: number;
+            /** Service */
+            service: string;
+            /** Ts */
+            ts: number;
+        };
+        /** DeploymentEvent */
+        DeploymentEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "deployment";
+            payload: components["schemas"]["DeploymentPayload"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Seq */
+            seq: number;
+            /** Service */
+            service: string;
+            /** Ts */
+            ts: number;
+        };
+        /** DeploymentPayload */
+        DeploymentPayload: {
+            /** Author */
+            author: string;
+            /** Commit Ref */
+            commit_ref: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Summary */
+            summary: string;
+            /** Version */
+            version: string;
+        };
+        /** EngineUpdate */
+        EngineUpdate: {
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Run Id */
+            run_id: string;
+            /** Seq */
+            seq: number;
+            /** Sim Ts */
+            sim_ts: number;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "deployment_observed" | "anomaly_opened" | "anomaly_resolved" | "service_health_changed" | "incident_opened" | "incident_updated" | "incident_resolved" | "pending_watch";
+        };
+        /** ErrorBody */
+        ErrorBody: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ErrorResponse */
+        ErrorResponse: {
+            error: components["schemas"]["ErrorBody"];
+        };
+        /** Evidence */
+        Evidence: {
+            /**
+             * Data
+             * @default {}
+             */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deployment" | "anomaly" | "topology" | "log";
+            /** Ref */
+            ref: string;
+            /** Statement */
+            statement: string;
+            /** Ts */
+            ts: number;
+        };
+        /** Factor */
+        Factor: {
+            /** Contribution */
+            contribution: number;
+            /** Explanation */
+            explanation: string;
+            /** Value */
+            value: number;
+            /** Weight */
+            weight: number;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** HealthResponse */
         HealthResponse: {
             /** Kafka */
@@ -71,12 +560,211 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /** Incident */
+        Incident: {
+            /** Ambiguous */
+            ambiguous: boolean;
+            /** Anomalies */
+            anomalies: components["schemas"]["Anomaly"][];
+            blast_radius: components["schemas"]["BlastRadius"];
+            /** Candidates */
+            candidates: components["schemas"]["Candidate"][];
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /** First Anomaly Ts */
+            first_anomaly_ts: number;
+            /** Incident Id */
+            incident_id: string;
+            /** Margin */
+            margin: number;
+            /** Opened Ts */
+            opened_ts: number;
+            /** Rejected Candidates */
+            rejected_candidates: components["schemas"]["RejectedCandidate"][];
+            /**
+             * Resolved Ts
+             * @default null
+             */
+            resolved_ts: number | null;
+            /** Revision */
+            revision: number;
+            /** Run Id */
+            run_id: string;
+            /** Service Health */
+            service_health: {
+                [key: string]: "healthy" | "degraded" | "failing";
+            };
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "resolved";
+            what_changed: components["schemas"]["WhatChanged"];
+        };
         /** Layout */
         Layout: {
             /** X */
             x: number;
             /** Y */
             y: number;
+        };
+        /** LogEvent */
+        LogEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "log";
+            payload: components["schemas"]["LogPayload"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Seq */
+            seq: number;
+            /** Service */
+            service: string;
+            /** Ts */
+            ts: number;
+        };
+        /** LogPayload */
+        LogPayload: {
+            /**
+             * Fields
+             * @default {}
+             */
+            fields: {
+                [key: string]: string | number | boolean;
+            };
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "INFO" | "WARN" | "ERROR";
+            /** Message */
+            message: string;
+        };
+        /** MetricEvent */
+        MetricEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "metric";
+            payload: components["schemas"]["MetricPayload"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Seq */
+            seq: number;
+            /** Service */
+            service: string;
+            /** Ts */
+            ts: number;
+        };
+        /** MetricPayload */
+        MetricPayload: {
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct";
+            /** Value */
+            value: number;
+        };
+        /** Prediction */
+        Prediction: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Incident Id */
+            incident_id: string;
+            /** Incident Revision */
+            incident_revision: number;
+            /** Low Margin */
+            low_margin: boolean;
+            /** Made Ts */
+            made_ts: number;
+            /** Predicted Healed */
+            predicted_healed: string[];
+            /** Predicted Unchanged */
+            predicted_unchanged: string[];
+            /** Prediction Id */
+            prediction_id: string;
+        };
+        /** PredictionVerification */
+        PredictionVerification: {
+            /** Outcomes */
+            outcomes: {
+                [key: string]: string | ("healed_as_predicted" | "unchanged_as_predicted" | "missed_heal" | "unexpected_heal");
+            }[];
+            /** Prediction Id */
+            prediction_id: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "confirmed" | "partial" | "refuted" | "inconclusive";
+            /** Verified Ts */
+            verified_ts: number;
+        };
+        /** RejectedCandidate */
+        RejectedCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "NO_ANOMALY_ON_SERVICE_OR_REACHABLE" | "ANOMALY_EXPLAINED_BY_EARLIER_CAUSE" | "OUTSIDE_LOOKBACK_WINDOW" | "ANOMALY_PRECEDES_DEPLOYMENT";
+            /** Service */
+            service: string;
+            /** Statement */
+            statement: string;
+        };
+        /** RollbackEvent */
+        RollbackEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "rollback";
+            payload: components["schemas"]["RollbackPayload"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Seq */
+            seq: number;
+            /** Service */
+            service: string;
+            /** Ts */
+            ts: number;
+        };
+        /** RollbackPayload */
+        RollbackPayload: {
+            /** Deployment Id */
+            deployment_id: string;
+            /** Restored Version */
+            restored_version: string;
         };
         /**
          * ScenarioInfo
@@ -121,6 +809,18 @@ export interface components {
              */
             tier: "customer_facing" | "edge" | "internal" | "data";
         };
+        /** SimulateRequest */
+        SimulateRequest: {
+            /** Seed */
+            seed: number;
+            /**
+             * Skip Warmup
+             * @default false
+             */
+            skip_warmup: boolean;
+            /** Speed */
+            speed?: number | null;
+        };
         /** TopologyEdge */
         TopologyEdge: {
             /** Blocking */
@@ -137,6 +837,49 @@ export interface components {
             /** Services */
             services: components["schemas"]["ServiceNode"][];
         };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
+        /** WhatChanged */
+        WhatChanged: {
+            /** Changes */
+            changes: components["schemas"]["ChangeItem"][];
+            /** First Anomaly Ts */
+            first_anomaly_ts: number;
+            /** Healthy Until Ts */
+            healthy_until_ts: number;
+            /** Statement */
+            statement: string;
+        };
+        /** WsEnvelope */
+        WsEnvelope: {
+            /** Payload */
+            payload: unknown;
+            /**
+             * Run Id
+             * @default null
+             */
+            run_id: string | null;
+            /** Seq */
+            seq: number;
+            /** Sim Ts */
+            sim_ts: number;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "snapshot" | "run.started" | "run.stopped" | "sim.clock" | "metrics.batch" | "log.batch" | "deployment.observed" | "anomaly.opened" | "anomaly.resolved" | "service.health" | "incident.opened" | "incident.updated" | "incident.resolved" | "prediction.made" | "prediction.verified" | "agent.step" | "agent.done" | "fix.state";
+        };
     };
     responses: never;
     parameters: never;
@@ -146,6 +889,77 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    events_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetricEvent"] | components["schemas"]["DeploymentEvent"] | components["schemas"]["RollbackEvent"] | components["schemas"]["LogEvent"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_view_graph__service__get: {
+        parameters: {
+            query?: {
+                direction?: string;
+                depth?: number;
+            };
+            header?: never;
+            path: {
+                service: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -166,6 +980,352 @@ export interface operations {
             };
         };
     };
+    incidents_incidents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    incident_incidents__incident_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    blast_radius_incidents__incident_id__blast_radius_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    causal_path_incidents__incident_id__causal_path_get: {
+        parameters: {
+            query: {
+                candidate: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prediction_incidents__incident_id__prediction_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    timeline_incidents__incident_id__timeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    run_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metrics_runs__run_id__metrics_get: {
+        parameters: {
+            query?: {
+                service?: string | null;
+                metric?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recover_runs__run_id__recover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_runs__run_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     scenarios_scenarios_get: {
         parameters: {
             query?: never;
@@ -182,6 +1342,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScenarioInfo"][];
+                };
+            };
+        };
+    };
+    service_detail_services__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_simulate__scenario__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scenario: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

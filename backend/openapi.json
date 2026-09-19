@@ -1,6 +1,565 @@
 {
   "components": {
     "schemas": {
+      "Anomaly": {
+        "properties": {
+          "anomaly_id": {
+            "title": "Anomaly Id",
+            "type": "string"
+          },
+          "baseline": {
+            "title": "Baseline",
+            "type": "number"
+          },
+          "detected_ts": {
+            "title": "Detected Ts",
+            "type": "integer"
+          },
+          "metric": {
+            "enum": [
+              "latency_p95_ms",
+              "error_rate",
+              "request_rate",
+              "active_connections",
+              "memory_used_pct"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "onset_ts": {
+            "title": "Onset Ts",
+            "type": "integer"
+          },
+          "peak_value": {
+            "title": "Peak Value",
+            "type": "number"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          },
+          "resolved_ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolved Ts"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anomaly_id",
+          "run_id",
+          "service",
+          "metric",
+          "onset_ts",
+          "detected_ts",
+          "state",
+          "baseline",
+          "peak_value",
+          "ratio"
+        ],
+        "title": "Anomaly",
+        "type": "object"
+      },
+      "BlastRadius": {
+        "properties": {
+          "customer_facing_affected": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Customer Facing Affected",
+            "type": "array"
+          },
+          "services": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Services",
+            "type": "array"
+          }
+        },
+        "required": [
+          "customer_facing_affected",
+          "services"
+        ],
+        "title": "BlastRadius",
+        "type": "object"
+      },
+      "Candidate": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "chain": {
+            "items": {
+              "$ref": "#/components/schemas/ChainStep"
+            },
+            "title": "Chain",
+            "type": "array"
+          },
+          "covered_anomaly_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Anomaly Ids",
+            "type": "array"
+          },
+          "deployment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deployment Id"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "factors": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Factor"
+            },
+            "title": "Factors",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "deployment",
+              "service_fault"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "root_anomaly_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Root Anomaly Ids",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "kind",
+          "service",
+          "rank",
+          "score",
+          "factors",
+          "root_anomaly_ids",
+          "covered_anomaly_ids",
+          "evidence_ids",
+          "chain"
+        ],
+        "title": "Candidate",
+        "type": "object"
+      },
+      "ChainStep": {
+        "properties": {
+          "node_type": {
+            "enum": [
+              "deployment",
+              "anomaly",
+              "service"
+            ],
+            "title": "Node Type",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "via": {
+            "enum": [
+              "change",
+              "self",
+              "fault",
+              "load"
+            ],
+            "title": "Via",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "node_type",
+          "ref",
+          "service",
+          "ts",
+          "via",
+          "statement"
+        ],
+        "title": "ChainStep",
+        "type": "object"
+      },
+      "ChangeItem": {
+        "properties": {
+          "candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Candidate Id"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "deployment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "NO_ANOMALY_ON_SERVICE_OR_REACHABLE",
+                  "ANOMALY_EXPLAINED_BY_EARLIER_CAUSE",
+                  "OUTSIDE_LOOKBACK_WINDOW",
+                  "ANOMALY_PRECEDES_DEPLOYMENT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "relevant": {
+            "title": "Relevant",
+            "type": "boolean"
+          },
+          "seconds_before_onset": {
+            "title": "Seconds Before Onset",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "deployment_id",
+          "service",
+          "ts",
+          "seconds_before_onset",
+          "relevant"
+        ],
+        "title": "ChangeItem",
+        "type": "object"
+      },
+      "DeploymentEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "deployment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/DeploymentPayload"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "run_id",
+          "seq",
+          "ts",
+          "service",
+          "kind",
+          "payload"
+        ],
+        "title": "DeploymentEvent",
+        "type": "object"
+      },
+      "DeploymentPayload": {
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "commit_ref": {
+            "title": "Commit Ref",
+            "type": "string"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "version",
+          "commit_ref",
+          "summary",
+          "author"
+        ],
+        "title": "DeploymentPayload",
+        "type": "object"
+      },
+      "EngineUpdate": {
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sim_ts": {
+            "title": "Sim Ts",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "deployment_observed",
+              "anomaly_opened",
+              "anomaly_resolved",
+              "service_health_changed",
+              "incident_opened",
+              "incident_updated",
+              "incident_resolved",
+              "pending_watch"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "seq",
+          "sim_ts",
+          "type",
+          "payload"
+        ],
+        "title": "EngineUpdate",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Evidence": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "deployment",
+              "anomaly",
+              "topology",
+              "log"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "kind",
+          "ref",
+          "ts",
+          "statement"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "Factor": {
+        "properties": {
+          "contribution": {
+            "title": "Contribution",
+            "type": "number"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "weight",
+          "contribution",
+          "explanation"
+        ],
+        "title": "Factor",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "kafka": {
@@ -28,6 +587,123 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "Incident": {
+        "properties": {
+          "ambiguous": {
+            "title": "Ambiguous",
+            "type": "boolean"
+          },
+          "anomalies": {
+            "items": {
+              "$ref": "#/components/schemas/Anomaly"
+            },
+            "title": "Anomalies",
+            "type": "array"
+          },
+          "blast_radius": {
+            "$ref": "#/components/schemas/BlastRadius"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "first_anomaly_ts": {
+            "title": "First Anomaly Ts",
+            "type": "integer"
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "margin": {
+            "title": "Margin",
+            "type": "number"
+          },
+          "opened_ts": {
+            "title": "Opened Ts",
+            "type": "integer"
+          },
+          "rejected_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedCandidate"
+            },
+            "title": "Rejected Candidates",
+            "type": "array"
+          },
+          "resolved_ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolved Ts"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "service_health": {
+            "additionalProperties": {
+              "enum": [
+                "healthy",
+                "degraded",
+                "failing"
+              ],
+              "type": "string"
+            },
+            "title": "Service Health",
+            "type": "object"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "what_changed": {
+            "$ref": "#/components/schemas/WhatChanged"
+          }
+        },
+        "required": [
+          "incident_id",
+          "run_id",
+          "state",
+          "revision",
+          "opened_ts",
+          "first_anomaly_ts",
+          "anomalies",
+          "service_health",
+          "candidates",
+          "rejected_candidates",
+          "ambiguous",
+          "margin",
+          "what_changed",
+          "blast_radius",
+          "evidence"
+        ],
+        "title": "Incident",
+        "type": "object"
+      },
       "Layout": {
         "properties": {
           "x": {
@@ -44,6 +720,381 @@
           "y"
         ],
         "title": "Layout",
+        "type": "object"
+      },
+      "LogEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "log",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/LogPayload"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "run_id",
+          "seq",
+          "ts",
+          "service",
+          "kind",
+          "payload"
+        ],
+        "title": "LogEvent",
+        "type": "object"
+      },
+      "LogPayload": {
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "default": {},
+            "title": "Fields",
+            "type": "object"
+          },
+          "level": {
+            "enum": [
+              "INFO",
+              "WARN",
+              "ERROR"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "message"
+        ],
+        "title": "LogPayload",
+        "type": "object"
+      },
+      "MetricEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "metric",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/MetricPayload"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "run_id",
+          "seq",
+          "ts",
+          "service",
+          "kind",
+          "payload"
+        ],
+        "title": "MetricEvent",
+        "type": "object"
+      },
+      "MetricPayload": {
+        "properties": {
+          "metric": {
+            "enum": [
+              "latency_p95_ms",
+              "error_rate",
+              "request_rate",
+              "active_connections",
+              "memory_used_pct"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "value"
+        ],
+        "title": "MetricPayload",
+        "type": "object"
+      },
+      "Prediction": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "incident_revision": {
+            "title": "Incident Revision",
+            "type": "integer"
+          },
+          "low_margin": {
+            "title": "Low Margin",
+            "type": "boolean"
+          },
+          "made_ts": {
+            "title": "Made Ts",
+            "type": "integer"
+          },
+          "predicted_healed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Predicted Healed",
+            "type": "array"
+          },
+          "predicted_unchanged": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Predicted Unchanged",
+            "type": "array"
+          },
+          "prediction_id": {
+            "title": "Prediction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prediction_id",
+          "incident_id",
+          "incident_revision",
+          "candidate_id",
+          "low_margin",
+          "predicted_healed",
+          "predicted_unchanged",
+          "made_ts"
+        ],
+        "title": "Prediction",
+        "type": "object"
+      },
+      "PredictionVerification": {
+        "properties": {
+          "outcomes": {
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "enum": [
+                      "healed_as_predicted",
+                      "unchanged_as_predicted",
+                      "missed_heal",
+                      "unexpected_heal"
+                    ],
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "prediction_id": {
+            "title": "Prediction Id",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "confirmed",
+              "partial",
+              "refuted",
+              "inconclusive"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "verified_ts": {
+            "title": "Verified Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prediction_id",
+          "verdict",
+          "outcomes",
+          "verified_ts"
+        ],
+        "title": "PredictionVerification",
+        "type": "object"
+      },
+      "RejectedCandidate": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "reason_code": {
+            "enum": [
+              "NO_ANOMALY_ON_SERVICE_OR_REACHABLE",
+              "ANOMALY_EXPLAINED_BY_EARLIER_CAUSE",
+              "OUTSIDE_LOOKBACK_WINDOW",
+              "ANOMALY_PRECEDES_DEPLOYMENT"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "service",
+          "reason_code",
+          "statement"
+        ],
+        "title": "RejectedCandidate",
+        "type": "object"
+      },
+      "RollbackEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "rollback",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RollbackPayload"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "run_id",
+          "seq",
+          "ts",
+          "service",
+          "kind",
+          "payload"
+        ],
+        "title": "RollbackEvent",
+        "type": "object"
+      },
+      "RollbackPayload": {
+        "properties": {
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "restored_version": {
+            "title": "Restored Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "restored_version"
+        ],
+        "title": "RollbackPayload",
         "type": "object"
       },
       "ScenarioInfo": {
@@ -137,6 +1188,35 @@
         "title": "ServiceNode",
         "type": "object"
       },
+      "SimulateRequest": {
+        "properties": {
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "skip_warmup": {
+            "default": false,
+            "title": "Skip Warmup",
+            "type": "boolean"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          }
+        },
+        "required": [
+          "seed"
+        ],
+        "title": "SimulateRequest",
+        "type": "object"
+      },
       "TopologyEdge": {
         "properties": {
           "blocking": {
@@ -183,6 +1263,136 @@
         ],
         "title": "TopologyResponse",
         "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WhatChanged": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeItem"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "first_anomaly_ts": {
+            "title": "First Anomaly Ts",
+            "type": "integer"
+          },
+          "healthy_until_ts": {
+            "title": "Healthy Until Ts",
+            "type": "integer"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "healthy_until_ts",
+          "first_anomaly_ts",
+          "changes",
+          "statement"
+        ],
+        "title": "WhatChanged",
+        "type": "object"
+      },
+      "WsEnvelope": {
+        "properties": {
+          "payload": {
+            "title": "Payload"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Id"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "sim_ts": {
+            "title": "Sim Ts",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "snapshot",
+              "run.started",
+              "run.stopped",
+              "sim.clock",
+              "metrics.batch",
+              "log.batch",
+              "deployment.observed",
+              "anomaly.opened",
+              "anomaly.resolved",
+              "service.health",
+              "incident.opened",
+              "incident.updated",
+              "incident.resolved",
+              "prediction.made",
+              "prediction.verified",
+              "agent.step",
+              "agent.done",
+              "fix.state"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "seq",
+          "sim_ts",
+          "payload"
+        ],
+        "title": "WsEnvelope",
+        "type": "object"
       }
     }
   },
@@ -192,6 +1402,132 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/events": {
+      "post": {
+        "operationId": "events_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "deployment": "#/components/schemas/DeploymentEvent",
+                    "log": "#/components/schemas/LogEvent",
+                    "metric": "#/components/schemas/MetricEvent",
+                    "rollback": "#/components/schemas/RollbackEvent"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/MetricEvent"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeploymentEvent"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RollbackEvent"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LogEvent"
+                  }
+                ],
+                "title": "Event"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Events Events Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Events"
+      }
+    },
+    "/graph/{service}": {
+      "get": {
+        "operationId": "graph_view_graph__service__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "downstream",
+              "title": "Direction",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Depth",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Graph View Graph  Service  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph View"
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
@@ -208,6 +1544,470 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/incidents": {
+      "get": {
+        "operationId": "incidents_incidents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Incidents Incidents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Incidents"
+      }
+    },
+    "/incidents/{incident_id}": {
+      "get": {
+        "operationId": "incident_incidents__incident_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Incident Incidents  Incident Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Incident"
+      }
+    },
+    "/incidents/{incident_id}/blast-radius": {
+      "get": {
+        "operationId": "blast_radius_incidents__incident_id__blast_radius_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Blast Radius Incidents  Incident Id  Blast Radius Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Blast Radius"
+      }
+    },
+    "/incidents/{incident_id}/causal-path": {
+      "get": {
+        "operationId": "causal_path_incidents__incident_id__causal_path_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "candidate",
+            "required": true,
+            "schema": {
+              "title": "Candidate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Causal Path Incidents  Incident Id  Causal Path Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Causal Path"
+      }
+    },
+    "/incidents/{incident_id}/prediction": {
+      "get": {
+        "description": "Frozen prediction after Recover; before that, a live preview (`frozen: false`).",
+        "operationId": "prediction_incidents__incident_id__prediction_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Prediction Incidents  Incident Id  Prediction Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prediction"
+      }
+    },
+    "/incidents/{incident_id}/timeline": {
+      "get": {
+        "operationId": "timeline_incidents__incident_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Timeline Incidents  Incident Id  Timeline Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Timeline"
+      }
+    },
+    "/reset": {
+      "post": {
+        "operationId": "reset_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Reset Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reset"
+      }
+    },
+    "/runs/{run_id}": {
+      "get": {
+        "operationId": "run_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run"
+      }
+    },
+    "/runs/{run_id}/metrics": {
+      "get": {
+        "operationId": "metrics_runs__run_id__metrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "service",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Metrics Runs  Run Id  Metrics Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Metrics"
+      }
+    },
+    "/runs/{run_id}/recover": {
+      "post": {
+        "operationId": "recover_runs__run_id__recover_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Recover Runs  Run Id  Recover Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recover"
+      }
+    },
+    "/runs/{run_id}/stop": {
+      "post": {
+        "operationId": "stop_runs__run_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Stop Runs  Run Id  Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop"
       }
     },
     "/scenarios": {
@@ -230,6 +2030,100 @@
           }
         },
         "summary": "Scenarios"
+      }
+    },
+    "/services/{name}": {
+      "get": {
+        "operationId": "service_detail_services__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Service Detail Services  Name  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Service Detail"
+      }
+    },
+    "/simulate/{scenario}": {
+      "post": {
+        "operationId": "simulate_simulate__scenario__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario",
+            "required": true,
+            "schema": {
+              "title": "Scenario",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Simulate Simulate  Scenario  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulate"
       }
     },
     "/topology": {

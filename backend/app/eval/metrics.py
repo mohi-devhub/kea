@@ -3,6 +3,7 @@
 from collections import Counter
 from collections.abc import Iterable
 from math import sqrt
+from statistics import median
 
 from app.eval.models import UNSCORED, AggregateResult, RunRecord, WilsonInterval
 
@@ -17,6 +18,59 @@ def wilson_interval(k: int, n: int, z: float = 1.96) -> WilsonInterval:
     return WilsonInterval(
         k=k, n=n, ci_low=max(0.0, centre - spread), ci_high=min(1.0, centre + spread)
     )
+
+
+def _signature(record: RunRecord) -> tuple[object, ...] | None:
+    """What an answer commits to: whether it saw an incident and its top hypothesis."""
+    out = record.parsed_output
+    if not out or "incident_detected" not in out:
+        return None
+    hyps = out.get("ranked_hypotheses") or []
+    top = hyps[0] if hyps else {}
+    return (
+        bool(out["incident_detected"]),
+        top.get("kind"),
+        top.get("service"),
+        top.get("deployment_id"),
+    )
+
+
+def consistency(records: list[RunRecord]) -> dict[str, object] | None:
+    """Run-to-run agreement: for each seed with several runs of the same input, the share of runs
+    that match the most common answer. 1.0 means the approach always answered the same way."""
+    by_seed: dict[int, list[tuple[object, ...]]] = {}
+    for record in records:
+        signature = _signature(record)
+        if signature is not None:
+            by_seed.setdefault(record.seed, []).append(signature)
+    shares = [max(Counter(sigs).values()) / len(sigs) for sigs in by_seed.values() if len(sigs) > 1]
+    if not shares:
+        return None
+    return {
+        "cases": len(shares),
+        "runs_per_case": round(sum(len(v) for v in by_seed.values() if len(v) > 1) / len(shares)),
+        "agreement": sum(shares) / len(shares),
+        "unanimous_cases": sum(1 for share in shares if share == 1.0),
+    }
+
+
+def cost_summary(records: Iterable[RunRecord]) -> dict[str, dict[str, float | int | None]]:
+    """Per approach: how many analyses, how long each took, and how many tokens they used."""
+    grouped: dict[str, list[RunRecord]] = {}
+    for record in records:
+        if record.status not in UNSCORED:
+            grouped.setdefault(record.approach, []).append(record)
+    out: dict[str, dict[str, float | int | None]] = {}
+    for approach, group in sorted(grouped.items()):
+        latencies = [r.latency_ms for r in group if r.latency_ms is not None]
+        tokens = [r.usage.get("total_tokens", 0) for r in group]
+        out[approach] = {
+            "analyses": len(group),
+            "median_latency_ms": round(median(latencies), 2) if latencies else None,
+            "median_tokens": int(median(tokens)) if tokens else 0,
+            "total_tokens": int(sum(tokens)),
+        }
+    return out
 
 
 def aggregate_records(records: Iterable[RunRecord]) -> list[AggregateResult]:
@@ -43,6 +97,9 @@ def aggregate_records(records: Iterable[RunRecord]) -> list[AggregateResult]:
         modes = [grade.mode for grade in grades if grade.mode]
         if modes:
             extra["mode_counts"] = {mode: modes.count(mode) for mode in sorted(set(modes))}
+        agreement = consistency(scored)
+        if agreement:
+            extra["consistency"] = agreement
         determinism = [grade.determinism_ok for grade in grades if grade.determinism_ok is not None]
         if determinism:
             extra["determinism_rate"] = sum(determinism) / len(determinism)

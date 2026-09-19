@@ -56,7 +56,7 @@ class RunRecord(BaseModel):
     raw_output: str | None = None
     parsed_output: dict[str, Any] | None = None
     grade: Grade
-    latency_ms: int | None = None
+    latency_ms: float | None = None
     usage: dict[str, int | float] = Field(default_factory=dict)
     error: str | None = None
     status: RunStatus = "ok"

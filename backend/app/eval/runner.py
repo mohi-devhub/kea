@@ -17,7 +17,7 @@ from app.eval.baselines.parser import parse_output
 from app.eval.baselines.prompts import BASELINE_PROMPT_VERSION, SYSTEM_PROMPT, build_prompt
 from app.eval.baselines.render import render_baseline_input
 from app.eval.grading import grade_baseline, grade_engine, grade_hybrid
-from app.eval.metrics import aggregate_records
+from app.eval.metrics import aggregate_records, cost_summary
 from app.eval.models import BaselineAnswer, Grade, RunRecord, RunStatus
 from app.graph.client import load_topology
 from app.llm.base import LLMProvider
@@ -38,6 +38,8 @@ LIMITATIONS = [
     "Hybrid accuracy equals the engine's by design; its measured contribution is grounded "
     "explanation.",
     "Simulated telemetry is much cleaner than production telemetry.",
+    "Repeated runs of the same input are not independent samples, so intervals over runs are "
+    "optimistic; consistency is reported separately.",
 ]
 
 
@@ -153,7 +155,9 @@ class EvalRunner:
         for scenario in scenarios:
             for seed in seeds:
                 events = generate(scenario, self.topology, seed)
+                engine_started = time.perf_counter()
                 engine_result = run_batch(events, InMemoryTopology(self.topology))
+                engine_ms = (time.perf_counter() - engine_started) * 1000
                 engine_hash = _sha256_json([event.model_dump(mode="json") for event in events])
                 if "engine" in approaches:
                     determinism_ok = _engine_determinism(events, self.topology, engine_result)
@@ -169,6 +173,7 @@ class EvalRunner:
                             grade=grade_engine(engine_result, scenario).model_copy(
                                 update={"determinism_ok": determinism_ok}
                             ),
+                            latency_ms=round(engine_ms, 2),
                         )
                     )
                 if "hybrid" in approaches and (hybrid_seeds is None or seed in hybrid_seeds):
@@ -227,6 +232,7 @@ class EvalRunner:
             },
             "engine_config": asdict(EngineConfig()),
             "warnings": _warnings(aggregates),
+            "cost": cost_summary(records),
             "results": aggregates,
             "per_run_index": [
                 {
@@ -312,7 +318,7 @@ class EvalRunner:
                             ),
                         )
                     )
-        latency = round((time.perf_counter() - started) * 1000)
+        latency = round((time.perf_counter() - started) * 1000, 1)
         grade = (
             grade_baseline(parsed, scenario.ground_truth)
             if parsed

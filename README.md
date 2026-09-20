@@ -83,13 +83,13 @@ The engine does **not** beat an LLM on root-cause accuracy here, and on real tel
 **In the product**
 
 - **OpenAI API.** The investigation agent and the LLM-only baselines call the OpenAI Responses API (`gpt-5.6-terra`). The LLM only explains; the engine decides.
-- **Codex CLI as the fix backend.** The fix flow runs `codex exec` non-interactively inside the sandbox, with a cleaned environment and a workspace-write sandbox. If the CLI is unavailable it falls back to an OpenAI tool loop. On the seeded bug, Codex CLI produced a passing fix that the reviewer then approves by hash.
+- **Codex CLI as the fix backend.** The fix flow runs `codex exec` non-interactively inside the sandbox, with a cleaned environment and a workspace-write sandbox. If the CLI is unavailable it falls back to an OpenAI tool loop. On the seeded bug, both the Codex CLI and the OpenAI tool loop produced a fix that turned the failing test green. In the default Docker setup the Codex CLI is not installed in the container, so the tool loop is what runs.
 
 **During the build**
 
 - **Codex** implemented the engine milestones, the streaming pipeline, the investigation agent, the eval harness, and the real-data experiments, working from written specs with tests as the acceptance criteria.
 - **Claude Code** was used for planning and specs, reviewing and verifying each milestone, the dashboard and eval UI, the fix flow, and this README.
-- Every milestone was reviewed by a human before it was merged.
+- A human directed the work and checked each milestone against its tests and a live run before it was merged. The backend has 87 passing tests, plus strict type checking and lint.
 
 ## Demo
 
@@ -218,8 +218,34 @@ The human approves by sending the exact diff hash. A wrong hash is refused, a re
 
 ### Limitations
 
-- **kea loses on real data.** The engine was built on clean simulated telemetry, and on real fault injections (RCAEval) the LLM baselines find the root cause far more often. On the first 25 Online Boutique cases the engine found 4 and the LLMs 14. On a later frozen split of 265 unseen cases (never used for tuning), the engine found 95 (36%), and the LLM baselines about 233 (88%). Adding CPU and network metrics, noise-robust thresholds and a small learned reranker raised the best kea variant to 130 of 265 (49%), which is still well below the LLM. The replay covers the service-fault path only. That work lives on a separate branch (`m5-realdata`) and is not part of this build.
+- **kea loses on real data.** The engine was built on clean simulated telemetry, and on real fault injections (RCAEval) the LLM baselines find the root cause far more often. On the first 25 Online Boutique cases the engine found 4 and the LLMs 14. On a later frozen split of 265 unseen cases (never used for tuning), the engine found 95 (36%), and the two LLM baselines 233 and 234 (88%). Adding CPU and network metrics, noise-robust thresholds and a small learned reranker raised the best kea variant to 130 of 265 (49%), which is still well below the LLM. The replay covers the service-fault path only. That work lives on a separate branch (`m5-realdata`) and is not part of this build.
 - **Simulated results are small-sample.** They use 5 tuning seeds and one LLM. The final held-out run has not been done yet.
 - An LLM does not degrade with topology size in our sweep (7 to 63 services); its cost grows instead, from about 5k to about 46k tokens per analysis.
 - Only the OpenAI adapter exists. Neo4j is a single node and one incident is handled per run.
 - The fix flow works on a small generated demo repo, not on arbitrary repositories.
+- Run state, incidents and fix proposals are kept in memory and are lost when the API restarts. There is no authentication; kea is built to run on a local machine.
+
+## Future Scope
+
+**Accuracy on real telemetry (the biggest gap)**
+- Review and merge the real-data work on `m5-realdata`, then keep going: use logs and traces (RCAEval RE2 and RE3 include them), not only metrics, and fit the engine's metric mapping to more real systems.
+- Use the LLM where it is strong, as a reranker over the engine's top candidates, while the engine keeps the evidence trail and the no-false-alarm behaviour. Measure it against the plain LLM on the frozen test split.
+- Run the final held-out evaluation (seeds 100-109) once, and publish it.
+
+**Real ingestion**
+- Adapters for OpenTelemetry and Prometheus so a real service fleet can feed `POST /events`, instead of the simulator.
+- Deployment events straight from CI/CD systems, and topology discovered from traces instead of a hand-written `topology.yaml`.
+
+**Product**
+- Persist runs, incidents and proposals in a database, and support many concurrent incidents.
+- Authentication, roles, and an audit log of every approval.
+- Notifications and hand-offs to Slack and PagerDuty.
+- More scenarios: concurrent deployments, config changes, regional failures, slow-burn degradation.
+- Anthropic and Sarvam provider adapters, so the explanation and fix backends are not tied to one vendor.
+- Learning from outcomes: use approved and rejected proposals and confirmed root causes to adjust the engine's priors, behind the same human-approval and overfitting safeguards.
+
+**Fix flow** (see the expansion list above): apply after approval, draft pull requests, re-verify, and cover non-code root causes.
+
+**Scale and deployment**
+- Neo4j clustering and stream partitioning for larger topologies (the scale sweep shows engine latency growing from 8 ms to 367 ms at 63 services), and a hosted deployment.
+

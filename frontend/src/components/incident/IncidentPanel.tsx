@@ -1,8 +1,9 @@
 "use client";
 
 import { WarningCircle } from "@phosphor-icons/react";
-import { Badge, CardHeader, EmptyState, Segmented } from "@/components/ui";
+import { Badge, CardHeader, Segmented } from "@/components/ui";
 import { type Tab, useKea } from "@/lib/store";
+import { FixTab } from "./FixTab";
 import { InvestigateTab } from "./InvestigateTab";
 import { OverviewTab } from "./OverviewTab";
 
@@ -41,7 +42,7 @@ export function IncidentPanel() {
       <div role="tabpanel" aria-label={`${tab} tab`} tabIndex={0} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {tab === "overview" && <OverviewTab />}
         {tab === "investigate" && <InvestigateTab />}
-        {tab === "fix" && <EmptyState>No fix proposal available yet.</EmptyState>}
+        {tab === "fix" && <FixTab />}
       </div>
     </div>
   );

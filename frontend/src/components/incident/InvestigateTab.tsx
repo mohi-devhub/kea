@@ -8,7 +8,7 @@ import type { AgentTrace, InvestigationResult } from "@/lib/types";
 const MODE_TONE: Record<InvestigationResult["mode"], BadgeTone> = { LIVE: "accent", REPLAYED: "warn", TEMPLATE: "neutral" };
 
 /** Evidence chip: hovering or focusing it highlights the service the evidence is about. */
-function EvidenceChip({ id, service }: { id: string; service?: string }) {
+export function EvidenceChip({ id, service }: { id: string; service?: string }) {
   const setHighlight = useKea((s) => s.setHighlight);
   const on = () => service && setHighlight([service]);
   const off = () => setHighlight([]);

@@ -52,3 +52,12 @@ def test_step2_robust_mad_rejects_noisy_spikes_and_detects_step() -> None:
     assert any(anomaly.metric == "cpu_pct" for anomaly in old.anomalies)
     assert len(robust.anomalies) == 1
     assert robust.anomalies[0].peak_value == 1000.0
+
+
+def test_step3_onset_uses_persistence_timestamp() -> None:
+    result = run_batch(
+        _series("cpu_pct", [20.0] * 15 + [80.0] * 3),
+        InMemoryTopology(online_boutique()),
+    )
+
+    assert result.anomalies[0].onset_ts == EPOCH_MS + 17 * 5_000

@@ -131,7 +131,7 @@ class EngineState:
         streak.append((event.ts, event.payload.value))
         if len(streak) < self.config.consecutive_samples:
             return
-        onset, _ = streak[0]
+        onset = event.ts if self.config.onset_at_persistence else streak[0][0]
         peak = max(value for _, value in streak)
         anomaly = Anomaly(
             anomaly_id=f"A-{self.run_id}-{len(self.anomalies) + 1:04d}",
@@ -385,9 +385,25 @@ class EngineState:
             if root.anomaly_id not in attached:
                 raw.append((self._candidate(None, [root], anomalies, parents), root.onset_ts))
         raw.sort(key=lambda item: (-item[0].score, item[1], item[0].candidate_id))
+        ordered: list[tuple[Candidate, int]] = []
+        while raw:
+            lead_score = raw[0][0].score
+            close = [
+                item for item in raw if lead_score - item[0].score <= self.config.ranking_tie_margin
+            ]
+            raw = [item for item in raw if item not in close]
+            close.sort(
+                key=lambda item: (
+                    -item[0].factors["dependency_consistency"].value,
+                    -item[0].factors["downstream_impact"].value,
+                    item[1],
+                    item[0].candidate_id,
+                )
+            )
+            ordered.extend(close)
         ranked = [
             candidate.model_copy(update={"rank": index})
-            for index, (candidate, _) in enumerate(raw, 1)
+            for index, (candidate, _) in enumerate(ordered, 1)
         ]
         return ranked, rejected, parents
 

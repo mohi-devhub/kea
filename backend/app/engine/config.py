@@ -33,6 +33,8 @@ class EngineConfig:
     cpu_mad_sensitivity: float = 4.0
     network_delay_mad_sensitivity: float = 4.0
     packet_loss_mad_sensitivity: float = 4.0
+    onset_at_persistence: bool = True
+    ranking_tie_margin: float = 0.02
     # incidents and causality (sections 4-6)
     delta_s: int = 5
     epsilon_s: int = 5

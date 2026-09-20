@@ -23,6 +23,16 @@ class EngineConfig:
     network_delay_delta_ms: float = 20.0
     packet_loss_ratio: float = 4.0
     packet_loss_min_pct: float = 1.0
+    # robust detection: keep false for the pre-real-telemetry ratio behavior
+    use_robust_baseline: bool = True
+    mad_floor_ratio: float = 0.01
+    latency_mad_sensitivity: float = 4.0
+    error_rate_mad_sensitivity: float = 4.0
+    connections_mad_sensitivity: float = 4.0
+    memory_mad_sensitivity: float = 4.0
+    cpu_mad_sensitivity: float = 4.0
+    network_delay_mad_sensitivity: float = 4.0
+    packet_loss_mad_sensitivity: float = 4.0
     # incidents and causality (sections 4-6)
     delta_s: int = 5
     epsilon_s: int = 5

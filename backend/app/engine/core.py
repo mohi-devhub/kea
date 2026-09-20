@@ -112,17 +112,19 @@ class EngineState:
             else event.payload.value
         )
         if active is None and len(history) >= self.config.min_baseline_samples:
-            self._detect(event, baseline, key)
+            self._detect(event, baseline, key, history)
         elif active is not None:
-            self._resolve(event, active, baseline, key)
+            self._resolve(event, active, baseline, key, history)
         if self._active_anomaly(event.service, metric) is None:
             history.append(event.payload.value)
             del history[: -self.config.baseline_window]
         self._refresh_health(event)
         self._refresh_incident(event)
 
-    def _detect(self, event: MetricEvent, baseline: float, key: tuple[str, str]) -> None:
-        if not self._breaches(event.payload.metric, event.payload.value, baseline):
+    def _detect(
+        self, event: MetricEvent, baseline: float, key: tuple[str, str], history: list[float]
+    ) -> None:
+        if not self._breaches(event.payload.metric, event.payload.value, baseline, history):
             self.breach_streaks[key] = []
             return
         streak = self.breach_streaks.setdefault(key, [])
@@ -148,9 +150,14 @@ class EngineState:
         self._emit(event, "anomaly_opened", {"anomaly_id": anomaly.anomaly_id})
 
     def _resolve(
-        self, event: MetricEvent, anomaly: Anomaly, baseline: float, key: tuple[str, str]
+        self,
+        event: MetricEvent,
+        anomaly: Anomaly,
+        baseline: float,
+        key: tuple[str, str],
+        history: list[float],
     ) -> None:
-        threshold = self._threshold(event.payload.metric, baseline)
+        threshold = self._threshold(event.payload.metric, baseline, history)
         midpoint = baseline + (threshold - baseline) / 2
         streak = self.resolve_streaks.setdefault(key, [])
         if event.payload.value < midpoint:
@@ -183,29 +190,45 @@ class EngineState:
             return 0.1
         return 1.0
 
-    def _threshold(self, metric: str, baseline: float) -> float:
+    def _threshold(self, metric: str, baseline: float, history: list[float] | None = None) -> float:
         c = self.config
         if metric == "latency_p95_ms":
-            return c.latency_ratio * max(baseline, c.latency_floor)
-        if metric == "error_rate":
-            return max(
+            threshold = c.latency_ratio * max(baseline, c.latency_floor)
+        elif metric == "error_rate":
+            threshold = max(
                 c.error_rate_min, c.error_rate_ratio * max(baseline, c.error_rate_baseline_floor)
             )
-        if metric == "active_connections":
-            return c.connections_ratio * baseline
-        if metric == "cpu_pct":
-            return max(c.cpu_ratio * baseline, baseline + c.cpu_delta_pts)
-        if metric == "network_delay_ms":
-            return max(
+        elif metric == "active_connections":
+            threshold = c.connections_ratio * baseline
+        elif metric == "cpu_pct":
+            threshold = max(c.cpu_ratio * baseline, baseline + c.cpu_delta_pts)
+        elif metric == "network_delay_ms":
+            threshold = max(
                 c.network_delay_ratio * max(baseline, 1.0),
                 baseline + c.network_delay_delta_ms,
             )
-        if metric == "packet_loss_pct":
-            return max(c.packet_loss_ratio * max(baseline, 0.1), c.packet_loss_min_pct)
-        return baseline + c.memory_delta_pts
+        elif metric == "packet_loss_pct":
+            threshold = max(c.packet_loss_ratio * max(baseline, 0.1), c.packet_loss_min_pct)
+        else:
+            threshold = baseline + c.memory_delta_pts
+        if not c.use_robust_baseline or history is None or not history:
+            return threshold
+        deviations = [abs(value - baseline) for value in history[-c.baseline_window :]]
+        mad = median(deviations)
+        sensitivity = {
+            "latency_p95_ms": c.latency_mad_sensitivity,
+            "error_rate": c.error_rate_mad_sensitivity,
+            "active_connections": c.connections_mad_sensitivity,
+            "memory_used_pct": c.memory_mad_sensitivity,
+            "cpu_pct": c.cpu_mad_sensitivity,
+            "network_delay_ms": c.network_delay_mad_sensitivity,
+            "packet_loss_pct": c.packet_loss_mad_sensitivity,
+        }.get(metric, 0.0)
+        robust = baseline + sensitivity * max(mad, abs(baseline) * c.mad_floor_ratio)
+        return max(threshold, robust)
 
-    def _breaches(self, metric: str, value: float, baseline: float) -> bool:
-        return value >= self._threshold(metric, baseline)
+    def _breaches(self, metric: str, value: float, baseline: float, history: list[float]) -> bool:
+        return value >= self._threshold(metric, baseline, history)
 
     def _refresh_health(self, event: MetricEvent) -> None:
         active = [anomaly for anomaly in self.anomalies if anomaly.state == "active"]

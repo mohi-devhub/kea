@@ -44,18 +44,7 @@ kea splits the job so that each part does what it is good at.
 
 ### Inspiration
 
-The backend architecture is inspired by Netflix's Real-Time Distributed Graph (RDG), as described in [How Netflix Built a Real-Time Distributed Graph](https://blog.bytebytego.com/p/how-netflix-built-a-real-time-distributed). In RDG, member events are written to Kafka topics, stream-processing jobs filter and de-duplicate them, the results are stored as a graph, and services query that graph to follow relationships that would otherwise need many joins across siloed systems.
-
-**kea tries to replicate a much smaller version of that pipeline** for incident analysis:
-
-| Netflix RDG | kea |
-|---|---|
-| Kafka topics as the ingestion backbone | Redpanda (Kafka API) carrying metric and deployment events |
-| Stream jobs that clean and de-duplicate events | A stream worker that consumes, de-duplicates and feeds the engine |
-| A graph store for fast relationship traversal | Neo4j holding the service dependency graph, plus an in-memory copy the engine uses |
-| A serving layer other services query | A FastAPI REST and WebSocket layer serving the dashboard and the agent |
-
-The differences are large. kea runs on one machine at simulator scale, not millions of records per second. It has no Flink, Avro, Iceberg or Data Mesh. And its graph is the service dependency topology (seeded from `topology.yaml`), not a graph built from events. This is a small take on the pattern, not a reimplementation, and it has no affiliation with Netflix.
+The backend architecture is inspired by Netflix's Real-Time Distributed Graph, described in [How Netflix Built a Real-Time Distributed Graph](https://blog.bytebytego.com/p/how-netflix-built-a-real-time-distributed): events stream through Kafka, are cleaned by stream jobs, and land in a graph that services query for relationships. **kea replicates a much smaller version of that idea** for incident analysis, using Redpanda (Kafka API), a stream worker, and a Neo4j service dependency graph, on a single machine. It is not a reimplementation and has no affiliation with Netflix.
 
 ### Why not just ask an LLM?
 

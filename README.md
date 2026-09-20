@@ -42,6 +42,10 @@ kea splits the job so that each part does what it is good at.
 | **Measure** | The **eval harness** runs the engine and LLM-only baselines on identical events, plus repeatability, cost, scale and real-data (RCAEval) checks. |
 | **Fix** | The **fix flow** proposes a patch in a sandbox and waits for a human to approve it by diff hash. |
 
+### Inspiration
+
+The backend architecture is inspired by Netflix's real-time distributed graph system: events stream in continuously, and a graph of how things relate is kept up to date so questions about relationships can be answered as things happen. **kea tries to replicate a much smaller version of that idea** for incident analysis: a Kafka-compatible stream (Redpanda) feeds a worker, and a live service dependency graph (Neo4j plus an in-memory copy) is what the engine reasons over. It is a single-node hackathon-scale take on the pattern, not a reimplementation of Netflix's system, and it has no affiliation with Netflix.
+
 ### Why not just ask an LLM?
 
 Measured on simulated incidents (tuning seeds 0-4, baseline model `gpt-5.6-terra`, small samples, wide intervals):

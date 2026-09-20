@@ -103,6 +103,14 @@ _Add the demo video link here._
 
 ![Live dashboard](assets/screenshots/dashboard.png)
 
+**Incident opened.** The engine has ranked the deployment as the root cause and says what changed: the payment deployment came 45 seconds before the first anomaly, with a per-factor score breakdown.
+
+![Incident opened](assets/screenshots/incident-open.png)
+
+**Causal path and prediction.** As the failure spreads, the causal path is highlighted and the engine previews which services should heal if the deployment is rolled back.
+
+![Causal path and prediction](assets/screenshots/causal-path.png)
+
 **Timeline.** Every deployment, anomaly and health change of one run, in simulated time.
 
 ![Timeline](assets/screenshots/timeline.png)

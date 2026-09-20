@@ -3,6 +3,8 @@ import { humanizeMetric } from "@/lib/fmt";
 import type {
   Anomaly,
   BlastRadius,
+  FixProposal,
+  FixSignal,
   Health,
   Incident,
   InvestigationState,
@@ -70,6 +72,10 @@ type KeaState = {
   prediction: PredictionState | null;
   verification: PredictionVerification | null;
   investigation: InvestigationState | null;
+  /** incident_id -> the proposal being reviewed (the newest one the API returned). */
+  fixProposals: Record<string, FixProposal>;
+  /** last `fix.state` message; the Fix tab refetches the full proposal when it changes. */
+  fixSignal: FixSignal | null;
   timeline: TimelineItem[];
   deployments: RawEvent[];
   // hot path, kept in its own fields so graph selectors never see it change
@@ -88,6 +94,7 @@ type KeaState = {
   clearRun: () => void;
   setPreview: (p: Prediction | null) => void;
   beginInvestigation: (investigationId: string) => void;
+  setFixProposal: (p: FixProposal) => void;
   selectService: (name: string | null) => void;
   setOverlay: (candidateId: string | null) => void;
   setBlast: (b: BlastRadius | null) => void;
@@ -111,6 +118,8 @@ const RUN_SCOPED = {
   prediction: null as PredictionState | null,
   verification: null as PredictionVerification | null,
   investigation: null as InvestigationState | null,
+  fixProposals: {} as Record<string, FixProposal>,
+  fixSignal: null as FixSignal | null,
   timeline: [] as TimelineItem[],
   deployments: [] as RawEvent[],
   metricsLatest: {} as Record<string, MetricPoint>,
@@ -152,6 +161,7 @@ export const useKea = create<KeaState>((set, get) => ({
         steps: [],
       },
     }),
+  setFixProposal: (p) => set((s) => ({ fixProposals: { ...s.fixProposals, [p.incident_id]: p } })),
   selectService: (name) => set({ selectedService: name }),
   setOverlay: (candidateId) => set({ overlayCandidateId: candidateId }),
   setBlast: (blast) => set({ blast }),
@@ -289,6 +299,19 @@ export const useKea = create<KeaState>((set, get) => ({
         set({ verification: m.payload });
         push(item(m.sim_ts, "prediction", m.payload.verdict === "confirmed" ? "ok" : "warn", `Prediction ${m.payload.verdict}`));
         return;
+      case "fix.state": {
+        // the message carries the state only; the tab refetches the proposal off this signal
+        const sig = m.payload;
+        const held = s.fixProposals[sig.incident_id];
+        set({
+          fixSignal: sig,
+          fixProposals:
+            held && held.proposal_id === sig.proposal_id
+              ? { ...s.fixProposals, [sig.incident_id]: { ...held, state: sig.state } }
+              : s.fixProposals,
+        });
+        return;
+      }
       case "agent.step": {
         const step = m.payload as AgentTrace & { investigation_id: string };
         const current = s.investigation;

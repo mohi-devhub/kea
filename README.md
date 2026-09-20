@@ -44,7 +44,7 @@ kea splits the job so that each part does what it is good at.
 
 ### Inspiration
 
-The backend architecture is inspired by Netflix's Real-Time Distributed Graph, described in [How Netflix Built a Real-Time Distributed Graph](https://blog.bytebytego.com/p/how-netflix-built-a-real-time-distributed): events stream through Kafka, are cleaned by stream jobs, and land in a graph that services query for relationships. **kea replicates a much smaller version of that idea** for incident analysis, using Redpanda (Kafka API), a stream worker, and a Neo4j service dependency graph, on a single machine. It is not a reimplementation and has no affiliation with Netflix.
+The backend architecture is inspired by Netflix's Real-Time Distributed Graph, described in [How Netflix Built a Real-Time Distributed Graph](https://blog.bytebytego.com/p/how-netflix-built-a-real-time-distributed): events stream through Kafka, are cleaned by stream jobs, and land in a graph that services query for relationships. **kea replicates a much smaller version of that idea** for incident analysis, using Redpanda (Kafka API), a stream worker, and a Neo4j service dependency graph, on a single machine.
 
 ### Why not just ask an LLM?
 

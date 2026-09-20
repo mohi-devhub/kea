@@ -17,6 +17,12 @@ class EngineConfig:
     error_rate_ratio_floor: float = 0.005
     connections_ratio: float = 1.8
     memory_delta_pts: float = 15.0
+    cpu_ratio: float = 1.8
+    cpu_delta_pts: float = 10.0
+    network_delay_ratio: float = 2.5
+    network_delay_delta_ms: float = 20.0
+    packet_loss_ratio: float = 4.0
+    packet_loss_min_pct: float = 1.0
     # incidents and causality (sections 4-6)
     delta_s: int = 5
     epsilon_s: int = 5

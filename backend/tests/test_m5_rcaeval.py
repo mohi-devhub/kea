@@ -18,7 +18,8 @@ def test_load_case_maps_metrics_and_subsamples(tmp_path) -> None:  # type: ignor
         {
             "time": times,
             "adservice_latency-90": [0.004] * 30 + [0.2] * 30,
-            "adservice_cpu": [0.3] * 60,  # unmapped
+            "adservice_cpu": [0.3] * 30 + [75.0] * 30,
+            "adservice_latency-50": [0.002] * 30 + [0.05] * 30,
             "adservice_mem": [4e7] * 60,
             "unknown_workload": [1.0] * 60,  # service not in topology
         }
@@ -27,7 +28,7 @@ def test_load_case_maps_metrics_and_subsamples(tmp_path) -> None:  # type: ignor
     (tmp_path / "inject_time.txt").write_text("1030")
     events, scenario = load_case("re1ob_adservice_delay_1", tmp_path, online_boutique())
     metrics = {e.payload.metric for e in events}  # type: ignore[union-attr]
-    assert metrics == {"latency_p95_ms", "memory_used_pct"}
-    assert len(events) == 2 * 12  # every 5th second of 60
+    assert metrics == {"latency_p95_ms", "memory_used_pct", "cpu_pct", "network_delay_ms"}
+    assert len(events) == 4 * 12  # every 5th second of 60
     assert max(e.payload.value for e in events if e.payload.metric == "latency_p95_ms") == 200  # type: ignore[union-attr]
     assert scenario.warmup_s == 30 and scenario.ground_truth.root_cause.service == "adservice"  # type: ignore[union-attr]

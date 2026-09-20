@@ -7,7 +7,14 @@ from pydantic import BaseModel, Field
 Kind = Literal["service", "database", "cache"]
 Tier = Literal["customer_facing", "edge", "internal", "data"]
 Metric = Literal[
-    "latency_p95_ms", "error_rate", "request_rate", "active_connections", "memory_used_pct"
+    "latency_p95_ms",
+    "error_rate",
+    "request_rate",
+    "active_connections",
+    "memory_used_pct",
+    "cpu_pct",
+    "network_delay_ms",
+    "packet_loss_pct",
 ]
 
 

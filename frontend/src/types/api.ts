@@ -380,7 +380,7 @@ export interface components {
              * Metric
              * @enum {string}
              */
-            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct";
+            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct" | "cpu_pct" | "network_delay_ms" | "packet_loss_pct";
             /** Onset Ts */
             onset_ts: number;
             /** Peak Value */
@@ -790,7 +790,7 @@ export interface components {
              * Metric
              * @enum {string}
              */
-            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct";
+            metric: "latency_p95_ms" | "error_rate" | "request_rate" | "active_connections" | "memory_used_pct" | "cpu_pct" | "network_delay_ms" | "packet_loss_pct";
             /** Value */
             value: number;
         };

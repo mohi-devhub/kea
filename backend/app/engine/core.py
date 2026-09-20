@@ -177,7 +177,11 @@ class EngineState:
         )
 
     def _floor(self, metric: str) -> float:
-        return self.config.error_rate_ratio_floor if metric == "error_rate" else 1.0
+        if metric == "error_rate":
+            return self.config.error_rate_ratio_floor
+        if metric == "packet_loss_pct":
+            return 0.1
+        return 1.0
 
     def _threshold(self, metric: str, baseline: float) -> float:
         c = self.config
@@ -189,6 +193,15 @@ class EngineState:
             )
         if metric == "active_connections":
             return c.connections_ratio * baseline
+        if metric == "cpu_pct":
+            return max(c.cpu_ratio * baseline, baseline + c.cpu_delta_pts)
+        if metric == "network_delay_ms":
+            return max(
+                c.network_delay_ratio * max(baseline, 1.0),
+                baseline + c.network_delay_delta_ms,
+            )
+        if metric == "packet_loss_pct":
+            return max(c.packet_loss_ratio * max(baseline, 0.1), c.packet_loss_min_pct)
         return baseline + c.memory_delta_pts
 
     def _breaches(self, metric: str, value: float, baseline: float) -> bool:

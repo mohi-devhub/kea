@@ -21,7 +21,10 @@
               "error_rate",
               "request_rate",
               "active_connections",
-              "memory_used_pct"
+              "memory_used_pct",
+              "cpu_pct",
+              "network_delay_ms",
+              "packet_loss_pct"
             ],
             "title": "Metric",
             "type": "string"
@@ -1040,7 +1043,10 @@
               "error_rate",
               "request_rate",
               "active_connections",
-              "memory_used_pct"
+              "memory_used_pct",
+              "cpu_pct",
+              "network_delay_ms",
+              "packet_loss_pct"
             ],
             "title": "Metric",
             "type": "string"

@@ -6,13 +6,22 @@ import { Button, HealthChip, SectionLabel } from "@/components/ui";
 import { clock } from "@/lib/fmt";
 import { useKea } from "@/lib/store";
 
-const UNIT: Record<string, string> = { latency_p95_ms: " ms", memory_used_pct: " %" };
+const UNIT: Record<string, string> = {
+  latency_p95_ms: " ms",
+  memory_used_pct: " %",
+  cpu_pct: " %",
+  network_delay_ms: " ms",
+  packet_loss_pct: " %",
+};
 const LABEL: Record<string, string> = {
   latency_p95_ms: "latency p95",
   error_rate: "error rate",
   request_rate: "request rate",
   active_connections: "connections",
   memory_used_pct: "memory used",
+  cpu_pct: "cpu",
+  network_delay_ms: "network delay",
+  packet_loss_pct: "packet loss",
 };
 const metricLabel = (metric: string) => LABEL[metric] ?? metric.replace(/_/g, " ");
 

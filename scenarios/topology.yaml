@@ -18,12 +18,12 @@ edges:            # caller -> callee
   - {from: inventory,    to: postgres,      blocking: true}
   - {from: inventory,    to: redis,         blocking: true}
 metrics:          # baseline mean, relative noise sd (abs sd for error_rate)
-  web-frontend:  {latency_p95_ms: [320, 0.05], error_rate: [0.002, 0.0008], request_rate: [120, 0.05]}
-  api-gateway:   {latency_p95_ms: [210, 0.05], error_rate: [0.002, 0.0008], request_rate: [120, 0.05]}
-  checkout:      {latency_p95_ms: [260, 0.05], error_rate: [0.003, 0.0008], request_rate: [40, 0.05]}
-  payment:       {latency_p95_ms: [180, 0.05], error_rate: [0.002, 0.0008], request_rate: [35, 0.05]}
-  inventory:     {latency_p95_ms: [60,  0.05], error_rate: [0.002, 0.0008], request_rate: [70, 0.05]}
-  notifications: {latency_p95_ms: [90,  0.05], error_rate: [0.004, 0.0010], request_rate: [20, 0.05]}
-  postgres:      {latency_p95_ms: [6,   0.05], active_connections: [40, 0.05]}
-  redis:         {latency_p95_ms: [1.2, 0.05], memory_used_pct: [55, 0.02]}
+  web-frontend:  {latency_p95_ms: [320, 0.05], error_rate: [0.002, 0.0008], request_rate: [120, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  api-gateway:   {latency_p95_ms: [210, 0.05], error_rate: [0.002, 0.0008], request_rate: [120, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  checkout:      {latency_p95_ms: [260, 0.05], error_rate: [0.003, 0.0008], request_rate: [40, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  payment:       {latency_p95_ms: [180, 0.05], error_rate: [0.002, 0.0008], request_rate: [35, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  inventory:     {latency_p95_ms: [60,  0.05], error_rate: [0.002, 0.0008], request_rate: [70, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  notifications: {latency_p95_ms: [90,  0.05], error_rate: [0.004, 0.0010], request_rate: [20, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  postgres:      {latency_p95_ms: [6,   0.05], active_connections: [40, 0.05], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
+  redis:         {latency_p95_ms: [1.2, 0.05], memory_used_pct: [55, 0.02], cpu_pct: [20, 0.05], network_delay_ms: [5, 0.05], packet_loss_pct: [0, 0]}
 sample_interval_s: 5

@@ -17,6 +17,8 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
+from app.eval.metrics import aggregate_records, cost_summary
+from app.eval.models import RunRecord
 from app.eval.runner import EvalRunner
 from app.models.events import Event, MetricEvent, MetricPayload
 from app.models.topology import Edge, Layout, ServiceDef, Topology
@@ -150,23 +152,52 @@ def load_case(case: str, directory: Path, topology: Topology) -> tuple[list[Even
     times: list[int] = table["time"]
     start = times[0]
     keep = [i for i, t in enumerate(times) if (t - start) % 5 == 0]
-    events: list[Event] = []
+    columns: dict[str, dict[str, list[float | None]]] = {}
     for column, values in table.items():
         service, _, raw = column.partition("_")
-        if service not in topology.services:
-            continue
-        if raw == "mem":
-            pre = [v for v, t in zip(values, times, strict=True) if t < inject and v is not None]
-            if not pre:
-                continue
-            baseline = median(pre)
-            series = [100 * v / (2 * baseline) if v is not None else None for v in values]
-            metric = "memory_used_pct"
-        elif raw in _METRIC:
-            scale = 1000 if raw == "latency-90" else 1
-            series, metric = [v * scale if v is not None else None for v in values], _METRIC[raw]
-        else:
-            continue
+        if service in topology.services:
+            columns.setdefault(service, {})[raw] = values
+
+    def pre_median(values: list[float | None]) -> float | None:
+        normal = [v for v, t in zip(values, times, strict=True) if t < inject and v is not None]
+        return median(normal) if normal else None
+
+    mapped: list[tuple[str, str, list[float | None]]] = []
+    for service in sorted(columns):
+        raw_columns = columns[service]
+        for raw, values in sorted(raw_columns.items()):
+            if raw == "mem":
+                baseline = pre_median(values)
+                if baseline is None or baseline == 0:
+                    continue
+                series = [100 * v / (2 * baseline) if v is not None else None for v in values]
+                mapped.append((service, "memory_used_pct", series))
+            elif raw == "cpu":
+                mapped.append((service, "cpu_pct", values))
+            elif raw in _METRIC:
+                scale = 1000 if raw == "latency-90" else 1
+                series = [v * scale if v is not None else None for v in values]
+                mapped.append((service, _METRIC[raw], series))
+            elif raw == "socket":
+                baseline = pre_median(values)
+                if baseline is None:
+                    continue
+                series = [
+                    max(0.0, 100 * (v - baseline) / max(baseline, 1.0)) if v is not None else None
+                    for v in values
+                ]
+                mapped.append((service, "packet_loss_pct", series))
+        p50 = raw_columns.get("latency-50")
+        p90 = raw_columns.get("latency-90")
+        if p50 is not None and p90 is not None:
+            series = [
+                max(0.0, (hi - lo) * 1000) if hi is not None and lo is not None else None
+                for lo, hi in zip(p50, p90, strict=True)
+            ]
+            mapped.append((service, "network_delay_ms", series))
+
+    events: list[Event] = []
+    for service, metric, series in mapped:
         for i in keep:
             if series[i] is not None:
                 events.append(
@@ -196,15 +227,23 @@ def load_case(case: str, directory: Path, topology: Topology) -> tuple[list[Even
 async def run_rcaeval(
     runner: EvalRunner, cache: Path, cases: list[str], approaches: list[str], **providers: Any
 ) -> dict[str, Any]:
-    topology = online_boutique()
-    runner.topology = topology
-    loaded = {c: load_case(c, fetch(c, cache), topology) for c in cases}
-    report, _ = await runner.run(
-        scenarios=[s for _, s in loaded.values()], seeds=[0], approaches=approaches,
-        events_for=lambda scenario, _seed: loaded[scenario.id][0], **providers,
-    )  # fmt: skip
+    loaded = {c: load_case(c, fetch(c, cache), topology_for_case(c)) for c in cases}
+    records: list[RunRecord] = []
+    topology_names = {"sock_shop" if c.startswith("re1ss_") else "online_boutique" for c in cases}
+    for topology_name in sorted(topology_names):
+        group = [c for c in cases if c.startswith("re1ss_") == (topology_name == "sock_shop")]
+        runner.topology = sock_shop() if topology_name == "sock_shop" else online_boutique()
+        report, group_records = await runner.run(
+            scenarios=[loaded[c][1] for c in group],
+            seeds=[0],
+            approaches=approaches,
+            events_for=lambda scenario, _seed: loaded[scenario.id][0],
+            **providers,
+        )
+        records.extend(group_records)
+    aggregates = [item.model_dump(mode="json") for item in aggregate_records(records)]
     by_fault: dict[str, dict[str, list[bool]]] = {}
-    for row in report["results"]:
+    for row in aggregates:
         fault = row["scenario"].split("_")[2]
         bucket = by_fault.setdefault(row["approach"], {}).setdefault(fault, [])
         bucket += [True] * row["top1_correct"]["k"] + [False] * (
@@ -212,12 +251,13 @@ async def run_rcaeval(
         )
     return {
         "cases": len(cases),
-        "results": report["results"],
-        "cost": report["cost"],
+        "results": aggregates,
+        "cost": cost_summary(records),
         "by_fault": {a: {f: [sum(v), len(v)] for f, v in fs.items()} for a, fs in by_fault.items()},
         "notes": [
-            "REAL DATA REPLAY: RCAEval RE1-OB, metrics only, service-fault path only.",
-            "cpu, disk and network faults are mostly outside the engine metric set; see by_fault.",
+            "REAL DATA REPLAY: RCAEval metrics only, service-fault path only.",
+            "CPU and latency-tail network signals are mapped; disk remains unmapped and the "
+            "packet-loss metric is a socket-count proxy where available.",
         ],
     }
 

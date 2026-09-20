@@ -1,10 +1,12 @@
-"""RCAEval RE1-OB adapter: replay real Online Boutique fault-injection cases.
+"""RCAEval adapter for the frozen RE1/RE2 Online Boutique and RE1 Sock Shop splits.
 
 Mapping frozen BEFORE the first run (no tuning on results):
-  latency-90 (s) -> latency_p95_ms (x1000)   workload -> request_rate   error -> error_rate
-  mem (bytes)    -> memory_used_pct = 100 * mem / (2 * pre-injection median), so a +15 pt delta
-                    means +30 percent growth
-  cpu, latency-50, disk and network counters are NOT mapped: the engine has no such metric.
+  latency-90 (s) -> latency_p95_ms (x1000), workload -> request_rate, error -> error_rate,
+  mem (bytes) -> memory_used_pct = 100 * mem / (2 * pre-injection median),
+  cpu (%) -> cpu_pct, latency-90 - latency-50 (s) -> network_delay_ms (x1000),
+  socket count -> packet_loss_pct = max(0, 100 * (socket - pre-injection median) /
+  max(pre-injection median, 1)). The socket-derived packet-loss value is explicitly a proxy;
+  RCAEval does not publish a packet-loss counter. disk/diskio remains unmapped.
 Samples are 1 Hz in the source and subsampled to every 5th second (the engine's cadence).
 This exercises the service-fault path only; RCAEval has no deployment events.
 """
@@ -29,7 +31,9 @@ ROOT_SERVICES = (
     "currencyservice",
     "productcatalogservice",
 )
+SOCK_SHOP_ROOT_SERVICES = ("carts", "catalogue", "orders", "payment", "user")
 FAULTS = ("cpu", "mem", "disk", "delay", "loss")
+RE2_FAULTS = (*FAULTS, "socket")
 _CALLS = {
     "frontend": (
         "adservice",
@@ -51,7 +55,25 @@ _CALLS = {
     "cartservice": ("redis",),
     "recommendationservice": ("productcatalogservice",),
 }
+_SOCK_SHOP_CALLS = {
+    "front-end": ("carts", "catalogue", "orders", "user"),
+    "carts": ("carts-db", "catalogue"),
+    "catalogue": ("catalogue-db",),
+    "orders": ("orders-db", "payment", "shipping", "user", "queue-master"),
+    "user": ("user-db", "session-db"),
+    "queue-master": ("rabbitmq",),
+    "rabbitmq-exporter": ("rabbitmq",),
+}
 _METRIC = {"latency-90": "latency_p95_ms", "workload": "request_rate", "error": "error_rate"}
+RCAEVAL_METRIC_MAPPING = {
+    "cpu": "cpu_pct",
+    "error": "error_rate",
+    "latency-50+latency-90": "network_delay_ms",
+    "latency-90": "latency_p95_ms",
+    "mem": "memory_used_pct",
+    "socket": "packet_loss_pct (proxy)",
+    "workload": "request_rate",
+}
 
 
 def online_boutique() -> Topology:
@@ -68,6 +90,43 @@ def online_boutique() -> Topology:
     return Topology(
         services=services, edges=edges, metrics={n: {} for n in services}, sample_interval_s=5
     )
+
+
+def sock_shop() -> Topology:
+    names = {
+        "front-end",
+        "rabbitmq-exporter",
+        *(c for callees in _SOCK_SHOP_CALLS.values() for c in callees),
+        *_SOCK_SHOP_CALLS,
+    }
+    services = {
+        n: ServiceDef(
+            kind=("database" if n.endswith("-db") else "cache" if n == "rabbitmq" else "service"),
+            tier=(
+                "customer_facing"
+                if n == "front-end"
+                else "data"
+                if n.endswith("-db")
+                else "internal"
+            ),
+            layout=Layout(x=0, y=0),
+        )
+        for n in sorted(names)
+    }
+    edges = [
+        Edge(**{"from": caller, "to": callee, "blocking": True})
+        for caller, callees in _SOCK_SHOP_CALLS.items()
+        for callee in callees
+    ]
+    return Topology(
+        services=services, edges=edges, metrics={n: {} for n in services}, sample_interval_s=5
+    )
+
+
+def topology_for_case(case: str) -> Topology:
+    if case.startswith(("re1ss_", "re2ss_")):
+        return sock_shop()
+    return online_boutique()
 
 
 def case_names(reps: int = 1) -> list[str]:

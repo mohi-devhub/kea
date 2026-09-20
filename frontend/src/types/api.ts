@@ -38,6 +38,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/fix-proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fix Proposal */
+        get: operations["get_fix_proposal_fix_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fix-proposals/{proposal_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Fix Proposal */
+        post: operations["approve_fix_proposal_fix_proposals__proposal_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fix-proposals/{proposal_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate Fix Proposal */
+        post: operations["regenerate_fix_proposal_fix_proposals__proposal_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/fix-proposals/{proposal_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Fix Proposal */
+        post: operations["reject_fix_proposal_fix_proposals__proposal_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/graph/{service}": {
         parameters: {
             query?: never;
@@ -134,6 +202,24 @@ export interface paths {
         get: operations["causal_path_incidents__incident_id__causal_path_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidents/{incident_id}/fix-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Fix Proposals */
+        get: operations["list_fix_proposals_incidents__incident_id__fix_proposals_get"];
+        put?: never;
+        /** Create Fix Proposal */
+        post: operations["create_fix_proposal_incidents__incident_id__fix_proposals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -402,6 +488,41 @@ export interface components {
              */
             state: "active" | "resolved";
         };
+        /**
+         * ApplyStatus
+         * @description Whether approval can change a real repository. Always disabled in the propose-only build.
+         */
+        ApplyStatus: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Reason
+             * @default Not enabled in this build: approval is recorded against the diff hash, but no branch, commit or PR is created.
+             */
+            reason: string;
+        };
+        /** ApprovalRecord */
+        ApprovalRecord: {
+            /** Approved At */
+            approved_at: string;
+            /** Approver */
+            approver: string;
+            /** Diff Hash */
+            diff_hash: string;
+        };
+        /** ApproveRequest */
+        ApproveRequest: {
+            /**
+             * Approver
+             * @default local-user
+             */
+            approver: string;
+            /** Diff Hash */
+            diff_hash: string;
+        };
         /** BlastRadius */
         BlastRadius: {
             /** Customer Facing Affected */
@@ -593,6 +714,114 @@ export interface components {
             value: number;
             /** Weight */
             weight: number;
+        };
+        /** FileChange */
+        FileChange: {
+            /** Additions */
+            additions: number;
+            /** Deletions */
+            deletions: number;
+            /** Path */
+            path: string;
+        };
+        /** FixCreated */
+        FixCreated: {
+            /** Incident Id */
+            incident_id: string;
+            /** Proposal Id */
+            proposal_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "generating" | "proposed" | "approved" | "rejected" | "failed" | "superseded";
+        };
+        /** FixExplanation */
+        FixExplanation: {
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Risks */
+            risks: string[];
+            /** Summary */
+            summary: string;
+            /** Why It Fixes */
+            why_it_fixes: string;
+        };
+        /** FixProposal */
+        FixProposal: {
+            /** Agent Trace */
+            agent_trace: components["schemas"]["FixTraceEntry"][];
+            apply: components["schemas"]["ApplyStatus"];
+            /**
+             * Approvable
+             * @default false
+             */
+            approvable: boolean;
+            approval: components["schemas"]["ApprovalRecord"] | null;
+            /** Approve Blocked Reason */
+            approve_blocked_reason: string | null;
+            /** Backend */
+            backend: string;
+            /** Base Commit */
+            base_commit: string | null;
+            /** Candidate Id */
+            candidate_id: string;
+            /** Commit Ref */
+            commit_ref: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /**
+             * Diff
+             * @default
+             */
+            diff: string;
+            /** Diff Hash */
+            diff_hash: string | null;
+            /** Error */
+            error: string | null;
+            explanation: components["schemas"]["FixExplanation"] | null;
+            /** Files Changed */
+            files_changed: components["schemas"]["FileChange"][];
+            /** Incident Id */
+            incident_id: string;
+            /** Mode */
+            mode: ("LIVE" | "REPLAYED" | "TEMPLATE") | null;
+            /** Model */
+            model: string | null;
+            /** Proposal Id */
+            proposal_id: string;
+            /** Provider */
+            provider: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "generating" | "proposed" | "approved" | "rejected" | "failed" | "superseded";
+            verification: components["schemas"]["Verification"];
+        };
+        /** FixTraceEntry */
+        FixTraceEntry: {
+            /**
+             * Args Summary
+             * @default
+             */
+            args_summary: string;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Result Summary
+             * @default
+             */
+            result_summary: string;
+            /** Step */
+            step: number;
+            /** Tool */
+            tool: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -836,6 +1065,11 @@ export interface components {
             /** Verified Ts */
             verified_ts: number;
         };
+        /** RejectRequest */
+        RejectRequest: {
+            /** Reason */
+            reason?: string | null;
+        };
         /** RejectedCandidate */
         RejectedCandidate: {
             /** Candidate Id */
@@ -937,6 +1171,18 @@ export interface components {
             /** Speed */
             speed?: number | null;
         };
+        /** TestRun */
+        TestRun: {
+            /**
+             * Output Tail
+             * @default
+             */
+            output_tail: string;
+            /** Passed */
+            passed: boolean;
+            /** Summary */
+            summary: string;
+        };
         /** TopologyEdge */
         TopologyEdge: {
             /** Blocking */
@@ -992,6 +1238,20 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** Verification */
+        Verification: {
+            after: components["schemas"]["TestRun"] | null;
+            before: components["schemas"]["TestRun"] | null;
+            /** Command */
+            command: string;
+            /** Modified Tests */
+            modified_tests: string[];
+            /**
+             * Tests Modified
+             * @default false
+             */
+            tests_modified: boolean;
         };
         /** WhatChanged */
         WhatChanged: {
@@ -1076,6 +1336,138 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_fix_proposal_fix_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_fix_proposal_fix_proposals__proposal_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_fix_proposal_fix_proposals__proposal_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_fix_proposal_fix_proposals__proposal_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixProposal"];
                 };
             };
             /** @description Validation Error */
@@ -1255,6 +1647,68 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_fix_proposals_incidents__incident_id__fix_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixProposal"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_fix_proposal_incidents__incident_id__fix_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixCreated"];
                 };
             };
             /** @description Validation Error */

@@ -82,6 +82,68 @@
         "title": "Anomaly",
         "type": "object"
       },
+      "ApplyStatus": {
+        "description": "Whether approval can change a real repository. Always disabled in the propose-only build.",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "reason": {
+            "default": "Not enabled in this build: approval is recorded against the diff hash, but no branch, commit or PR is created.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "reason"
+        ],
+        "title": "ApplyStatus",
+        "type": "object"
+      },
+      "ApprovalRecord": {
+        "properties": {
+          "approved_at": {
+            "title": "Approved At",
+            "type": "string"
+          },
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "diff_hash": {
+            "title": "Diff Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approver",
+          "approved_at",
+          "diff_hash"
+        ],
+        "title": "ApprovalRecord",
+        "type": "object"
+      },
+      "ApproveRequest": {
+        "properties": {
+          "approver": {
+            "default": "local-user",
+            "title": "Approver",
+            "type": "string"
+          },
+          "diff_hash": {
+            "title": "Diff Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff_hash"
+        ],
+        "title": "ApproveRequest",
+        "type": "object"
+      },
       "BlastRadius": {
         "properties": {
           "customer_facing_affected": {
@@ -545,6 +607,335 @@
           "explanation"
         ],
         "title": "Factor",
+        "type": "object"
+      },
+      "FileChange": {
+        "properties": {
+          "additions": {
+            "title": "Additions",
+            "type": "integer"
+          },
+          "deletions": {
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "additions",
+          "deletions"
+        ],
+        "title": "FileChange",
+        "type": "object"
+      },
+      "FixCreated": {
+        "properties": {
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "generating",
+              "proposed",
+              "approved",
+              "rejected",
+              "failed",
+              "superseded"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "incident_id",
+          "state"
+        ],
+        "title": "FixCreated",
+        "type": "object"
+      },
+      "FixExplanation": {
+        "properties": {
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "risks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risks",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "why_it_fixes": {
+            "title": "Why It Fixes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "why_it_fixes",
+          "evidence_ids",
+          "risks"
+        ],
+        "title": "FixExplanation",
+        "type": "object"
+      },
+      "FixProposal": {
+        "properties": {
+          "agent_trace": {
+            "items": {
+              "$ref": "#/components/schemas/FixTraceEntry"
+            },
+            "title": "Agent Trace",
+            "type": "array"
+          },
+          "apply": {
+            "$ref": "#/components/schemas/ApplyStatus"
+          },
+          "approvable": {
+            "default": false,
+            "title": "Approvable",
+            "type": "boolean"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approve_blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approve Blocked Reason"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "base_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Commit"
+          },
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "commit_ref": {
+            "title": "Commit Ref",
+            "type": "string"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "diff": {
+            "default": "",
+            "title": "Diff",
+            "type": "string"
+          },
+          "diff_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Hash"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FixExplanation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files_changed": {
+            "items": {
+              "$ref": "#/components/schemas/FileChange"
+            },
+            "title": "Files Changed",
+            "type": "array"
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "LIVE",
+                  "REPLAYED",
+                  "TEMPLATE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "generating",
+              "proposed",
+              "approved",
+              "rejected",
+              "failed",
+              "superseded"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/Verification"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "incident_id",
+          "run_id",
+          "candidate_id",
+          "deployment_id",
+          "commit_ref",
+          "state",
+          "backend",
+          "mode",
+          "provider",
+          "model",
+          "base_commit",
+          "diff",
+          "diff_hash",
+          "files_changed",
+          "explanation",
+          "verification",
+          "agent_trace",
+          "approval",
+          "apply",
+          "error",
+          "approvable",
+          "approve_blocked_reason"
+        ],
+        "title": "FixProposal",
+        "type": "object"
+      },
+      "FixTraceEntry": {
+        "properties": {
+          "args_summary": {
+            "default": "",
+            "title": "Args Summary",
+            "type": "string"
+          },
+          "duration_ms": {
+            "default": 0,
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "result_summary": {
+            "default": "",
+            "title": "Result Summary",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "tool",
+          "args_summary",
+          "result_summary",
+          "duration_ms"
+        ],
+        "title": "FixTraceEntry",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1185,6 +1576,23 @@
         "title": "PredictionVerification",
         "type": "object"
       },
+      "RejectRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RejectRequest",
+        "type": "object"
+      },
       "RejectedCandidate": {
         "properties": {
           "candidate_id": {
@@ -1406,6 +1814,30 @@
         "title": "SimulateRequest",
         "type": "object"
       },
+      "TestRun": {
+        "properties": {
+          "output_tail": {
+            "default": "",
+            "title": "Output Tail",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passed",
+          "summary",
+          "output_tail"
+        ],
+        "title": "TestRun",
+        "type": "object"
+      },
       "TopologyEdge": {
         "properties": {
           "blocking": {
@@ -1539,6 +1971,55 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "Verification": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "modified_tests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Modified Tests",
+            "type": "array"
+          },
+          "tests_modified": {
+            "default": false,
+            "title": "Tests Modified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "command",
+          "before",
+          "after",
+          "tests_modified",
+          "modified_tests"
+        ],
+        "title": "Verification",
         "type": "object"
       },
       "WhatChanged": {
@@ -1722,6 +2203,182 @@
           }
         },
         "summary": "Events"
+      }
+    },
+    "/fix-proposals/{proposal_id}": {
+      "get": {
+        "operationId": "get_fix_proposal_fix_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Fix Proposal"
+      }
+    },
+    "/fix-proposals/{proposal_id}/approve": {
+      "post": {
+        "operationId": "approve_fix_proposal_fix_proposals__proposal_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Fix Proposal"
+      }
+    },
+    "/fix-proposals/{proposal_id}/regenerate": {
+      "post": {
+        "operationId": "regenerate_fix_proposal_fix_proposals__proposal_id__regenerate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Regenerate Fix Proposal"
+      }
+    },
+    "/fix-proposals/{proposal_id}/reject": {
+      "post": {
+        "operationId": "reject_fix_proposal_fix_proposals__proposal_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Fix Proposal"
       }
     },
     "/graph/{service}": {
@@ -1956,6 +2613,86 @@
           }
         },
         "summary": "Causal Path"
+      }
+    },
+    "/incidents/{incident_id}/fix-proposals": {
+      "get": {
+        "operationId": "list_fix_proposals_incidents__incident_id__fix_proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FixProposal"
+                  },
+                  "title": "Response List Fix Proposals Incidents  Incident Id  Fix Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Fix Proposals"
+      },
+      "post": {
+        "operationId": "create_fix_proposal_incidents__incident_id__fix_proposals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Fix Proposal"
       }
     },
     "/incidents/{incident_id}/investigate": {

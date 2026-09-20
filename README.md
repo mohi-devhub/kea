@@ -53,7 +53,7 @@ Measured on simulated incidents (tuning seeds 0-4, baseline model `gpt-5.6-terra
 | Gives the same answer when run again | 100% | 87% on S4 and on S2 with topology |
 | Median time and tokens per analysis | about 9 ms, 0 tokens | about 3.5 s, about 5.7k tokens |
 
-The engine does **not** beat an LLM on root-cause accuracy here. Its measured edge is false alarms, repeatability, cost, speed, and evidence you can audit.
+The engine does **not** beat an LLM on root-cause accuracy here, and on real telemetry it is clearly worse (see [Limitations](#limitations)). Its measured edge is false alarms on healthy deploys, repeatability, cost, speed, and evidence you can audit.
 
 ## Features
 
@@ -99,13 +99,21 @@ _Add the demo video link here._
 
 ## Screenshots
 
-| Live incident dashboard | Investigation |
-|---|---|
-| ![Dashboard](assets/screenshots/dashboard.png) | ![Investigation](assets/screenshots/investigation.png) |
+**Live dashboard.** The service topology with live health, and the incident panel with Overview, Investigate and Fix tabs.
 
-| Fix proposal and approval | Benchmark |
-|---|---|
-| ![Fix flow](assets/screenshots/fix-flow.png) | ![Eval](assets/screenshots/eval.png) |
+![Live dashboard](assets/screenshots/dashboard.png)
+
+**Timeline.** Every deployment, anomaly and health change of one run, in simulated time.
+
+![Timeline](assets/screenshots/timeline.png)
+
+**Benchmark.** kea against LLM-only baselines on the same incidents, in one table and then in charts.
+
+![Benchmark results](assets/screenshots/eval-results.png)
+
+![Accuracy and false alarms](assets/screenshots/eval-charts.png)
+
+![Scale sweep](assets/screenshots/eval-scale.png)
 
 ## How to Run Locally
 
@@ -198,7 +206,7 @@ The human approves by sending the exact diff hash. A wrong hash is refused, a re
 
 ### Limitations
 
-- **Real-data accuracy is low.** On 25 real Online Boutique fault injections (RCAEval RE1-OB), the engine found the root cause in 4 cases and the LLM baselines in 14. The engine was built on clean simulated telemetry and sees only latency, error rate, request rate and memory. This replay covers the service-fault path only. Work to improve it (more metric types, noise-robust thresholds, an LLM reranker over the engine's top three) is in progress on a separate branch and is not part of this build.
+- **kea loses on real data.** The engine was built on clean simulated telemetry, and on real fault injections (RCAEval) the LLM baselines find the root cause far more often. On the first 25 Online Boutique cases the engine found 4 and the LLMs 14. On a later frozen split of 265 unseen cases (never used for tuning), the engine found 95 (36%), and the LLM baselines about 233 (88%). Adding CPU and network metrics, noise-robust thresholds and a small learned reranker raised the best kea variant to 130 of 265 (49%), which is still well below the LLM. The replay covers the service-fault path only. That work lives on a separate branch (`m5-realdata`) and is not part of this build.
 - **Simulated results are small-sample.** They use 5 tuning seeds and one LLM. The final held-out run has not been done yet.
 - An LLM does not degrade with topology size in our sweep (7 to 63 services); its cost grows instead, from about 5k to about 46k tokens per analysis.
 - Only the OpenAI adapter exists. Neo4j is a single node and one incident is handled per run.

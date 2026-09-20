@@ -99,7 +99,7 @@ Not hosted. kea runs locally with Docker Compose (see [How to Run Locally](#how-
 
 ### Demo / Pitch Video
 
-_Add the demo video link here._
+[Watch the demo video](https://drive.google.com/file/d/1OeVkG5aGKaDr3Y5QfOYFHiVtRHdWgNr2/view?usp=sharing)
 
 ## Screenshots
 

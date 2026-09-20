@@ -12,7 +12,7 @@ const SCENARIO_LABEL: Record<string, string> = {
   s3_red_herring_deploy: "S3 Decoy deploy",
   s4_benign_deploy: "S4 Healthy deploy",
 };
-const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss" };
+const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss", socket: "Socket faults" };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const fmtMs = (ms: number | null) => (ms == null ? "n/a" : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
 const find = (rows: EvalAggregate[], approach: string, scenario: string) => rows.find((r) => r.approach === approach && r.scenario === scenario);
@@ -44,7 +44,7 @@ export function CompareTable({ report }: { report: EvalReport }) {
     { name: "Median latency", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? fmtMs(cost[a].median_latency_ms) : null])) },
     { name: "Tokens", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? (cost[a].median_tokens ?? 0).toLocaleString() : null])) },
   ];
-  if (report.rcaeval) data.push({ name: "Root cause found", sub: "Real data, RCAEval, 25 cases", loses: true, cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(rca(a))])) });
+  if (report.rcaeval) data.push({ name: "Root cause found", sub: `Real data, RCAEval, ${report.rcaeval.cases} cases`, loses: true, cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(rca(a))])) });
   return (
     <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
       <table className="w-full min-w-[680px] border-collapse text-left">
@@ -111,9 +111,9 @@ export function ResultCharts({ report }: { report: EvalReport }) {
   const tokens = costGroups((c) => c.median_tokens ?? 0).map((g) => ({ ...g, bars: g.bars.map((b) => ({ ...b, text: b.value.toLocaleString() })) }));
   const lines = (pick: (p: NonNullable<typeof scale>["points"][number]) => number | null) =>
     APPROACHES.map((a) => ({ series: a, points: (scale?.points ?? []).filter((p) => p.approach === a && pick(p) != null).map((p) => ({ x: p.services, y: pick(p) as number })) })).filter((l) => l.points.length);
-  const faults = Object.keys(FAULT_LABEL);
+  const faults = Object.keys(FAULT_LABEL).filter((f) => Object.values(rca?.by_fault ?? {}).some((byFault) => (byFault[f]?.[1] ?? 0) > 0));
   const rcaGroups: BarGroup[] = rca
-    ? [{ label: "All faults", sub: `${rca.cases} cases`, fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], sub: "5 cases", fs: [f] }))].map(({ label, sub, fs }) => ({
+    ? [{ label: "All faults", sub: `${rca.cases} cases`, fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], sub: `${rca.by_fault[APPROACHES[0]]?.[f]?.[1] ?? 0} cases`, fs: [f] }))].map(({ label, sub, fs }) => ({
         label,
         sub,
         bars: APPROACHES.filter((a) => rca.by_fault[a]).map((a) => {
@@ -161,7 +161,7 @@ export function ResultCharts({ report }: { report: EvalReport }) {
         </ChartCard>
       )}
       {tab === "real" && rca && (
-        <ChartCard title="Real fault injections" subtitle="RCAEval RE1-OB, Online Boutique" legend={APPROACHES} caption="Where kea loses. One case per service and fault type, metrics only, with the metric mapping fixed before the first run. CPU, disk and network counters are not in the engine's metric set. This tests the service-fault path only, and 25 cases is a small sample.">
+        <ChartCard title="Real fault injections" subtitle={`RCAEval, ${rca.cases} real cases`} legend={APPROACHES} caption="Where kea loses. Real fault injections replayed through the same harness, metrics only, with the metric mapping fixed before the first run. Some fault types (for example disk) map poorly onto the engine's metric set. This tests the service-fault path only.">
           <div className="mx-auto max-w-[760px]"><HBarChart groups={rcaGroups} xMax={1} xTicks={[0, 0.25, 0.5, 0.75, 1]} xFormat={pct} xTitle="Top-1 correct" table={table} /></div>
         </ChartCard>
       )}

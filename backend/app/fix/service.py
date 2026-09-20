@@ -22,7 +22,7 @@ from app.fix.backends import BackendResult, BackendUnavailable, FixBackend, FixC
 from app.fix.backends.codex_cli import CodexCliBackend
 from app.fix.backends.llm_tool_loop import LLMToolLoopBackend
 from app.fix.demo_repo import TEST_COMMAND, build_demo_repo, has_tag
-from app.fix.explain import template_explanation, validate_explanation
+from app.fix.explain import provider_explanation, template_explanation, validate_explanation
 from app.fix.models import (
     ApprovalRecord,
     FixExplanation,
@@ -247,10 +247,10 @@ class FixService:
             proposal.backend = backend.name
             result = await self._run_backend(proposal, backend, ctx, sandbox, evidence)
             await self._finish(proposal, sandbox, result, evidence)
-        except (BackendUnavailable, FixError, subprocess.SubprocessError, OSError) as exc:
-            await self._fail(proposal_id, str(exc))
-        except TimeoutError:
+        except TimeoutError:  # before OSError: TimeoutError is a subclass of it
             await self._fail(proposal_id, f"the fix backend timed out after {BACKEND_TIMEOUT_S}s")
+        except (BackendUnavailable, FixError, subprocess.SubprocessError, OSError) as exc:
+            await self._fail(proposal_id, str(exc) or type(exc).__name__)
         except Exception as exc:  # a proposal failure must never crash the API
             await self._fail(proposal_id, f"{type(exc).__name__}: {str(exc)[:200]}")
 
@@ -331,6 +331,13 @@ class FixService:
         tests_touched = await asyncio.to_thread(sandbox.modified_tests)
         after = await asyncio.to_thread(sandbox.run_tests)
         explanation = result.explanation
+        if explanation is None and self.provider is not None:
+            explanation = await provider_explanation(
+                self.provider,
+                incident_summary=self._meta[proposal.proposal_id][0].what_changed.statement,
+                evidence=evidence,
+                diff=diff,
+            )
         if explanation is None or validate_explanation(
             explanation, files, {e["evidence_id"] for e in evidence}
         ):

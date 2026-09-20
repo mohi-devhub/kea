@@ -96,7 +96,7 @@ class Sandbox:
             )
         except subprocess.TimeoutExpired:
             return TestRun(passed=False, summary=f"timed out after {timeout:.0f}s")
-        output = (result.stdout + result.stderr).strip()
+        output = _scrub((result.stdout + result.stderr).strip(), self)
         return TestRun(
             passed=result.returncode == 0,
             summary=_summarize(output, result.returncode),
@@ -158,6 +158,11 @@ class Sandbox:
 def _is_test_path(path: str) -> bool:
     name = Path(path).name
     return path.startswith("tests/") or name.startswith("test_") or name.endswith("_test.py")
+
+
+def _scrub(text: str, sandbox: "Sandbox") -> str:
+    """Hide absolute paths: noise to a model, and the outbound secret guard blocks them."""
+    return text.replace(str(sandbox.repo.resolve()), "<repo>").replace(str(sandbox.repo), "<repo>")
 
 
 def _summarize(output: str, returncode: int) -> str:

@@ -148,6 +148,7 @@ def build_demo_repo(path: Path) -> Path:
         path,
         {
             "README.md": _README,
+            ".gitignore": "__pycache__/\n*.pyc\n",
             "src/payments/__init__.py": "",
             "src/payments/pool.py": _POOL,
             "src/payments/lookup.py": _LOOKUP_HEALTHY,

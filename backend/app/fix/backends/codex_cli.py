@@ -64,7 +64,7 @@ class CodexCliBackend:
         started = time.perf_counter()
         proc = await asyncio.create_subprocess_exec(
             *cmd, prompt,
-            cwd=sandbox.repo, env=_cli_env(),
+            cwd=sandbox.repo, env=_cli_env(), stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )  # fmt: skip
         try:

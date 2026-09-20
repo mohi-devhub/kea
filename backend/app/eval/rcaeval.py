@@ -277,6 +277,21 @@ async def run_rcaeval(
     weights_payload = (
         json.loads(weights_path.read_text(encoding="utf-8")) if weights_path.exists() else {}
     )
+    unscored = sorted(
+        {row["approach"] for row in aggregates if row.get("n", 0) == 0 and row.get("unscored")}
+    )
+    notes = [
+        f"REAL DATA REPLAY: RCAEval {split or 'custom'} split, metrics only, "
+        "service-fault path only.",
+        "CPU and latency-tail network signals are mapped; disk remains unmapped and the "
+        "packet-loss metric is a socket-count proxy where available.",
+    ]
+    if unscored:
+        notes.append(
+            "Unscored approaches (no provider answer) are excluded from accuracy denominators: "
+            + ", ".join(unscored)
+            + "."
+        )
     return {
         "cases": len(cases),
         "split": split,
@@ -289,12 +304,7 @@ async def run_rcaeval(
             "training": weights_payload.get("training_metadata"),
             "evaluation_split": split,
         },
-        "notes": [
-            f"REAL DATA REPLAY: RCAEval {split or 'custom'} split, metrics only, "
-            "service-fault path only.",
-            "CPU and latency-tail network signals are mapped; disk remains unmapped and the "
-            "packet-loss metric is a socket-count proxy where available.",
-        ],
+        "notes": notes,
     }
 
 

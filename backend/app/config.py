@@ -37,10 +37,16 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 60.0
     llm_cache_mode: str = "off"  # off | record | replay
     llm_cache_dir: Path = ROOT / ".llm-cache"
+    # Fix flow (propose-only): backend is codex_cli with a fallback to llm_tool_loop.
+    fix_backend: str = "codex_cli"  # codex_cli | llm_tool_loop
+    fix_cache_mode: str = "off"  # off | record | replay
+    fix_cache_dir: Path = ROOT / ".llm-cache" / "fix"
+    demo_repo_path: Path = ROOT / ".demo-repos" / "payment-service"
+    sandbox_dir: Path = ROOT / ".sandboxes"
     auto_investigate: bool = True
     agent_max_steps: int = 12
 
-    @field_validator("llm_cache_dir")
+    @field_validator("llm_cache_dir", "fix_cache_dir", "demo_repo_path", "sandbox_dir")
     @classmethod
     def _cache_dir_from_repo_root(cls, value: Path) -> Path:
         """A relative path in .env means relative to the repo, not to whatever cwd started us."""

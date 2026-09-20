@@ -20,6 +20,8 @@ from app.api.store import RunStore, RunView
 from app.api.views import scenario_info, topology_response
 from app.config import ROOT, get_settings
 from app.engine.prediction import make_prediction, verify_prediction
+from app.fix.models import ApproveRequest, FixCreated, FixProposal, RejectRequest
+from app.fix.service import FixError, FixService
 from app.graph import client as graph
 from app.llm.factory import provider_for_settings
 from app.models.api import (
@@ -127,6 +129,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.agent_tasks = {}
     app.state.agent = InvestigationAgent(settings.agent_max_steps)
     app.state.llm_provider = provider_for_settings(settings)
+    app.state.fix = FixService(
+        demo_repo=settings.demo_repo_path,
+        sandboxes=settings.sandbox_dir,
+        provider=provider_for_settings(settings, "fix"),
+        backend_pref=settings.fix_backend,
+        cache_mode=settings.fix_cache_mode,
+        cache_dir=settings.fix_cache_dir,
+        broadcast=app.state.store.broadcast,
+    )
     app.state.tasks = []
     if await graph.ping(app.state.driver):
         await graph.init_schema(app.state.driver)
@@ -400,6 +411,7 @@ def create_app() -> FastAPI:
         app.state.run_meta.clear()
         app.state.agent_tasks.clear()
         app.state.investigations.clear()
+        app.state.fix.reset()
         await app.state.store.flush_metrics(force=True)
         app.state.store.runs.clear()
         await graph.reset_runs(app.state.driver)
@@ -536,6 +548,60 @@ def create_app() -> FastAPI:
             else None,
             "error": record.get("error"),
         }
+
+    def fix_call(error: FixError) -> HTTPException:
+        return HTTPException(status_code=error.status, detail=error.message)
+
+    @app.post("/incidents/{incident_id}/fix-proposals", status_code=202, response_model=FixCreated)
+    async def create_fix_proposal(incident_id: str) -> FixCreated:
+        view = find_incident(incident_id)
+        if view is None or view.incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        try:
+            proposal = await app.state.fix.start(view.incident, view.run_id, view.deployments)
+        except FixError as error:
+            raise fix_call(error) from error
+        return FixCreated(
+            proposal_id=proposal.proposal_id, incident_id=incident_id, state=proposal.state
+        )
+
+    @app.get("/incidents/{incident_id}/fix-proposals", response_model=list[FixProposal])
+    async def list_fix_proposals(incident_id: str) -> list[FixProposal]:
+        return [p for p in app.state.fix.proposals.values() if p.incident_id == incident_id]
+
+    @app.get("/fix-proposals/{proposal_id}", response_model=FixProposal)
+    async def get_fix_proposal(proposal_id: str) -> FixProposal:
+        try:
+            return app.state.fix.get(proposal_id)  # type: ignore[no-any-return]
+        except FixError as error:
+            raise fix_call(error) from error
+
+    @app.post("/fix-proposals/{proposal_id}/approve", response_model=FixProposal)
+    async def approve_fix_proposal(proposal_id: str, body: ApproveRequest) -> FixProposal:
+        try:
+            return await app.state.fix.approve(proposal_id, body.diff_hash, body.approver)  # type: ignore[no-any-return]
+        except FixError as error:
+            raise fix_call(error) from error
+
+    @app.post("/fix-proposals/{proposal_id}/reject", response_model=FixProposal)
+    async def reject_fix_proposal(proposal_id: str, body: RejectRequest) -> FixProposal:
+        try:
+            return await app.state.fix.reject(proposal_id, body.reason)  # type: ignore[no-any-return]
+        except FixError as error:
+            raise fix_call(error) from error
+
+    @app.post("/fix-proposals/{proposal_id}/regenerate", status_code=202, response_model=FixCreated)
+    async def regenerate_fix_proposal(proposal_id: str) -> FixCreated:
+        try:
+            old = app.state.fix.get(proposal_id)
+            view = find_incident(old.incident_id)
+            deployments = view.deployments if view else []
+            proposal = await app.state.fix.regenerate(proposal_id, deployments)
+        except FixError as error:
+            raise fix_call(error) from error
+        return FixCreated(
+            proposal_id=proposal.proposal_id, incident_id=proposal.incident_id, state=proposal.state
+        )
 
     @app.get("/incidents/{incident_id}/timeline")
     async def timeline(incident_id: str) -> list[dict[str, object]]:

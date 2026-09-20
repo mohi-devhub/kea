@@ -81,6 +81,10 @@ services:
       LLM_CACHE_MODE: ${LLM_CACHE_MODE:-off}
       LLM_CACHE_DIR: /data/llm-cache
       AUTO_INVESTIGATE: ${AUTO_INVESTIGATE:-true}
+      # fix flow: the Codex CLI is not in the image, so it falls back to the LLM tool loop
+      FIX_BACKEND: ${FIX_BACKEND:-codex_cli}
+      FIX_CACHE_MODE: ${FIX_CACHE_MODE:-off}
+      FIX_CACHE_DIR: /data/llm-cache/fix
     volumes:
       - ./.llm-cache:/data/llm-cache
       - ./eval_results:/app/eval_results

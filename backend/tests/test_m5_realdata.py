@@ -5,6 +5,7 @@ import pytest
 from app.config import Settings
 from app.engine import InMemoryTopology, run_batch
 from app.engine.config import EngineConfig
+from app.eval.learned import FEATURE_NAMES, fit, rerank_ids
 from app.eval.rcaeval import online_boutique
 from app.eval.runner import EvalRunner
 from app.graph.client import load_topology
@@ -70,6 +71,20 @@ def test_step3_onset_uses_persistence_timestamp() -> None:
     )
 
     assert result.anomalies[0].onset_ts == EPOCH_MS + 17 * 5_000
+
+
+def test_step5_learned_reranker_is_deterministic_and_bounded() -> None:
+    scenario, topology = _scenario("s1_bad_deploy_payment")
+    incident = run_batch(generate(scenario, topology, 0), InMemoryTopology(topology)).incident
+    assert incident is not None
+    cases = [(incident, "payment", "dep-182")]
+    first = fit(cases, epochs=20)
+    second = fit(cases, epochs=20)
+
+    assert first == second
+    assert first.feature_names == FEATURE_NAMES
+    assert len(first.coefficients) == len(FEATURE_NAMES)
+    assert rerank_ids(incident, first) == [item.candidate_id for item in incident.candidates[:3]]
 
 
 def _scenario(scenario_id: str):  # type: ignore[no-untyped-def]

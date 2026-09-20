@@ -1,0 +1,60 @@
+{
+  "version": "learned-reranker-v1",
+  "feature_names": [
+    "factor_temporal",
+    "factor_dependency_consistency",
+    "factor_anomaly_strength",
+    "factor_downstream_impact",
+    "anomaly_strength",
+    "onset_delta",
+    "hop_distance",
+    "metric_latency_p95_ms",
+    "metric_error_rate",
+    "metric_request_rate",
+    "metric_active_connections",
+    "metric_memory_used_pct",
+    "metric_cpu_pct",
+    "metric_network_delay_ms",
+    "metric_packet_loss_pct"
+  ],
+  "coefficients": [
+    -0.05145117,
+    0.11909791,
+    0.05980867,
+    0.06876709,
+    0.14899274,
+    -0.02945501,
+    0.04534539,
+    0.04978131,
+    0.13220756,
+    0.0,
+    0.08755082,
+    0.10553145,
+    0.08049904,
+    -0.1040699,
+    0.0
+  ],
+  "intercept": -0.6901325,
+  "l2": 0.5,
+  "training_metadata": {
+    "source": "frozen RCAEval TUNE split plus simulator seeds 0-4",
+    "tune_cases_with_incidents": 59,
+    "rcaeval_tune_cases_with_incidents": 44,
+    "simulator_tuning_cases_with_incidents": 15,
+    "train_top1": 0.6271186441,
+    "leave_one_service_out_top1": {
+      "adservice": 0.7142857143,
+      "cartservice": 0.4444444444,
+      "checkoutservice": 0.25,
+      "currencyservice": 0.6,
+      "payment": 1.0,
+      "postgres": 1.0,
+      "productcatalogservice": 0.3,
+      "redis": 1.0
+    },
+    "cv_top1": 0.6635912698,
+    "cv_gap": -0.0364726258,
+    "regularization": 0.5,
+    "feature_limit": 15
+  }
+}

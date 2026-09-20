@@ -32,6 +32,9 @@
   --f2: #eb6834;
   --f3: #1baf7a;
   --f4: #eda100;
+  --f5: #805ad5;
+  --f6: #d14d8b;
+  --f7: #64748b;
   --shadow-card: 0 1px 3px rgb(16 24 40 / 0.07), 0 1px 2px -1px rgb(16 24 40 / 0.05);
   color-scheme: light;
 }
@@ -63,6 +66,9 @@
   --f2: #d95926;
   --f3: #199e70;
   --f4: #c98500;
+  --f5: #a78bfa;
+  --f6: #f472b6;
+  --f7: #94a3b8;
   --shadow-card: none;
   color-scheme: dark;
 }

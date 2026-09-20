@@ -17,6 +17,7 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
+from app.config import ROOT
 from app.eval.metrics import aggregate_records, cost_summary
 from app.eval.models import RunRecord
 from app.eval.runner import EvalRunner
@@ -67,6 +68,7 @@ _SOCK_SHOP_CALLS = {
     "rabbitmq-exporter": ("rabbitmq",),
 }
 _METRIC = {"latency-90": "latency_p95_ms", "workload": "request_rate", "error": "error_rate"}
+SPLIT_PATH = ROOT / "eval_results" / "rcaeval_split.json"
 RCAEVAL_METRIC_MAPPING = {
     "cpu": "cpu_pct",
     "error": "error_rate",
@@ -133,6 +135,19 @@ def topology_for_case(case: str) -> Topology:
 
 def case_names(reps: int = 1) -> list[str]:
     return [f"re1ob_{s}_{f}_{r}" for s in ROOT_SERVICES for f in FAULTS for r in range(1, reps + 1)]
+
+
+def split_case_names(split: str, path: Path = SPLIT_PATH) -> list[str]:
+    """Read the frozen case list; no split may be inferred from measured results."""
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if split not in {"tune", "test"}:
+        raise ValueError("split must be tune or test")
+    cases = value.get(split)
+    if not isinstance(cases, list) or not all(isinstance(item, str) for item in cases):
+        raise ValueError(f"frozen RCAEval split is missing {split}")
+    if len(cases) != len(set(cases)):
+        raise ValueError(f"frozen RCAEval {split} split contains duplicate cases")
+    return list(cases)
 
 
 def fetch(case: str, cache: Path) -> Path:
@@ -214,7 +229,7 @@ def load_case(case: str, directory: Path, topology: Topology) -> tuple[list[Even
     service = case.split("_")[1]
     warmup = inject - start
     scenario = Scenario(
-        id=case, title=case, description="RCAEval RE1-OB real fault injection", priority="P1",
+        id=case, title=case, description="RCAEval real fault injection", priority="P1",
         warmup_s=warmup, duration_s=times[-1] - inject, deployments=[], effects=[],
         ground_truth=GroundTruth(
             expect_incident=True, root_cause=RootCause(kind="service_fault", service=service),
@@ -225,7 +240,13 @@ def load_case(case: str, directory: Path, topology: Topology) -> tuple[list[Even
 
 
 async def run_rcaeval(
-    runner: EvalRunner, cache: Path, cases: list[str], approaches: list[str], **providers: Any
+    runner: EvalRunner,
+    cache: Path,
+    cases: list[str],
+    approaches: list[str],
+    *,
+    split: str | None = None,
+    **providers: Any,
 ) -> dict[str, Any]:
     loaded = {c: load_case(c, fetch(c, cache), topology_for_case(c)) for c in cases}
     records: list[RunRecord] = []
@@ -242,20 +263,35 @@ async def run_rcaeval(
         )
         records.extend(group_records)
     aggregates = [item.model_dump(mode="json") for item in aggregate_records(records)]
-    by_fault: dict[str, dict[str, list[bool]]] = {}
+    by_fault: dict[str, dict[str, list[int]]] = {}
+    by_fault_top3: dict[str, dict[str, list[int]]] = {}
     for row in aggregates:
         fault = row["scenario"].split("_")[2]
-        bucket = by_fault.setdefault(row["approach"], {}).setdefault(fault, [])
-        bucket += [True] * row["top1_correct"]["k"] + [False] * (
-            row["n"] - row["top1_correct"]["k"]
-        )
+        bucket = by_fault.setdefault(row["approach"], {}).setdefault(fault, [0, 0])
+        bucket[0] += row["top1_correct"]["k"]
+        bucket[1] += row["n"]
+        top3_bucket = by_fault_top3.setdefault(row["approach"], {}).setdefault(fault, [0, 0])
+        top3_bucket[0] += row["top3_contains"]["k"]
+        top3_bucket[1] += row["n"]
+    weights_path = Path(__file__).with_name("learned_weights_v1.json")
+    weights_payload = (
+        json.loads(weights_path.read_text(encoding="utf-8")) if weights_path.exists() else {}
+    )
     return {
         "cases": len(cases),
+        "split": split,
         "results": aggregates,
         "cost": cost_summary(records),
-        "by_fault": {a: {f: [sum(v), len(v)] for f, v in fs.items()} for a, fs in by_fault.items()},
+        "by_fault": by_fault,
+        "by_fault_top3": by_fault_top3,
+        "learning": {
+            "weights_version": weights_payload.get("version"),
+            "training": weights_payload.get("training_metadata"),
+            "evaluation_split": split,
+        },
         "notes": [
-            "REAL DATA REPLAY: RCAEval metrics only, service-fault path only.",
+            f"REAL DATA REPLAY: RCAEval {split or 'custom'} split, metrics only, "
+            "service-fault path only.",
             "CPU and latency-tail network signals are mapped; disk remains unmapped and the "
             "packet-loss metric is a socket-count proxy where available.",
         ],

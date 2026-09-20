@@ -25,6 +25,8 @@ from app.eval.baselines.prompts import (
 )
 from app.eval.baselines.render import render_baseline_input
 from app.eval.grading import grade_baseline, grade_engine, grade_hybrid, grade_rerank
+from app.eval.learned import LearnedWeights, rerank_ids, score
+from app.eval.learned import load as load_learned
 from app.eval.metrics import aggregate_records, cost_summary
 from app.eval.models import BaselineAnswer, Grade, RunRecord, RunStatus
 from app.graph.client import load_topology
@@ -49,6 +51,9 @@ LIMITATIONS = [
     "Repeated runs of the same input are not independent samples, so intervals over runs are "
     "optimistic; consistency is reported separately.",
 ]
+_LEGACY_METRICS = frozenset(
+    {"latency_p95_ms", "error_rate", "request_rate", "active_connections", "memory_used_pct"}
+)
 
 
 def parse_seed_spec(value: str) -> list[int]:
@@ -77,6 +82,9 @@ class EvalRunner:
         self.settings = settings or get_settings()
         self.topology = load_topology(self.settings.topology_path)
         self.scenarios = load_scenarios(self.settings.topology_path.parent, self.topology)
+        self.learned_weights: LearnedWeights | None = load_learned(
+            Path(__file__).with_name("learned_weights_v1.json")
+        )
 
     def select_scenarios(self, selection: str) -> list[Any]:
         if selection.strip().lower() == "all":
@@ -176,10 +184,48 @@ class EvalRunner:
                 engine_ms = (time.perf_counter() - engine_started) * 1000
                 engine_hash = _sha256_json([event.model_dump(mode="json") for event in events])
                 if "engine" in approaches:
-                    determinism_ok = _engine_determinism(events, self.topology, engine_result)
+                    legacy_events = _legacy_events(events)
+                    legacy_started = time.perf_counter()
+                    legacy_result = run_batch(
+                        legacy_events,
+                        InMemoryTopology(self.topology),
+                        EngineConfig(
+                            use_robust_baseline=False,
+                            onset_at_persistence=False,
+                            ranking_tie_margin=0.0,
+                        ),
+                    )
+                    legacy_ms = (time.perf_counter() - legacy_started) * 1000
+                    determinism_ok = _engine_determinism(
+                        legacy_events,
+                        self.topology,
+                        legacy_result,
+                        EngineConfig(
+                            use_robust_baseline=False,
+                            onset_at_persistence=False,
+                            ranking_tie_margin=0.0,
+                        ),
+                    )
                     records.append(
                         RunRecord(
                             approach="engine",
+                            scenario=scenario.id,
+                            seed=seed,
+                            run_index=0,
+                            input_sha256=engine_hash,
+                            raw_output=json.dumps(_engine_output(legacy_result), sort_keys=True),
+                            parsed_output=_engine_output(legacy_result),
+                            grade=grade_engine(legacy_result, scenario).model_copy(
+                                update={"determinism_ok": determinism_ok}
+                            ),
+                            latency_ms=round(legacy_ms, 2),
+                        )
+                    )
+                if "engine_v2" in approaches:
+                    determinism_ok = _engine_determinism(events, self.topology, engine_result)
+                    records.append(
+                        RunRecord(
+                            approach="engine_v2",
                             scenario=scenario.id,
                             seed=seed,
                             run_index=0,
@@ -191,6 +237,10 @@ class EvalRunner:
                             ),
                             latency_ms=round(engine_ms, 2),
                         )
+                    )
+                if "learned" in approaches:
+                    records.append(
+                        self._learned_record(scenario, seed, engine_result.incident, engine_hash)
                     )
                 if "hybrid" in approaches and (hybrid_seeds is None or seed in hybrid_seeds):
                     records.append(
@@ -254,6 +304,9 @@ class EvalRunner:
                 "max_output_tokens": self.settings.llm_max_output_tokens,
                 "prompt_version": BASELINE_PROMPT_VERSION,
                 "rerank_prompt_version": RERANK_PROMPT_VERSION,
+                "learned_weights_version": (
+                    self.learned_weights.version if self.learned_weights else None
+                ),
                 "heldout_eval_count": _heldout_count(ROOT / "eval_results")
                 + (1 if seeds == DEFAULT_HELDOUT else 0),
             },
@@ -274,6 +327,52 @@ class EvalRunner:
             "prompts": prompt_dir,
         }
         return report, records
+
+    def _learned_record(
+        self,
+        scenario: Any,
+        seed: int,
+        incident: Incident | None,
+        input_hash: str,
+    ) -> RunRecord:
+        original = (
+            [candidate.candidate_id for candidate in incident.candidates[:3]] if incident else []
+        )
+        weights = self.learned_weights
+        ordered = rerank_ids(incident, weights) if incident else []
+        scores: dict[str, float] = {}
+        if incident and weights:
+            scores = {
+                candidate.candidate_id: round(score(incident, candidate, weights), 6)
+                for candidate in incident.candidates[:3]
+            }
+        fallback = incident is not None and weights is None
+        mode = "LEARNED" if weights else "ENGINE_FALLBACK"
+        grade = grade_rerank(
+            ordered,
+            original,
+            incident,
+            scenario,
+            mode=mode,
+            grounding_pass=None,
+            fallback=fallback,
+        )
+        return RunRecord(
+            approach="learned",
+            scenario=scenario.id,
+            seed=seed,
+            run_index=0,
+            input_sha256=input_hash,
+            parsed_output={
+                "incident_detected": incident is not None,
+                "original_candidate_ids": original,
+                "reranked_candidate_ids": ordered,
+                "scores": scores,
+                "weights_version": weights.version if weights else None,
+                "fallback": fallback,
+            },
+            grade=grade,
+        )
 
     async def _hybrid_rerank_record(
         self,
@@ -674,6 +773,15 @@ def _engine_output(result: Any) -> dict[str, Any]:
     }
 
 
+def _legacy_events(events: list[Any]) -> list[Any]:
+    """Reproduce the pre-real-telemetry engine input for the before/after comparison."""
+    return [
+        event
+        for event in events
+        if event.kind != "metric" or event.payload.metric in _LEGACY_METRICS
+    ]
+
+
 def _rerank_candidates(incident: Incident | None) -> list[dict[str, Any]]:
     """Expose only top-three candidate fields and their own evidence to the reranker."""
     if incident is None:
@@ -702,14 +810,16 @@ def _rerank_candidates(incident: Incident | None) -> list[dict[str, Any]]:
     return payload
 
 
-def _engine_determinism(events: list[Any], topology: Any, result: Any) -> bool:
+def _engine_determinism(
+    events: list[Any], topology: Any, result: Any, config: EngineConfig | None = None
+) -> bool:
     """Check repeated batch output and the incremental state path agree byte-for-byte."""
     expected = _sha256_json(_engine_output(result))
-    repeated = run_batch(events, InMemoryTopology(topology))
+    repeated = run_batch(events, InMemoryTopology(topology), config or EngineConfig())
     repeated_hash = _sha256_json(_engine_output(repeated))
     if not events:
         return expected == repeated_hash
-    state = EngineState(events[0].run_id, InMemoryTopology(topology))
+    state = EngineState(events[0].run_id, InMemoryTopology(topology), config or EngineConfig())
     for event in events:
         state.ingest(event)
     incremental_hash = _sha256_json(_engine_output(state.result()))

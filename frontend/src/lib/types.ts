@@ -159,9 +159,11 @@ export type ScalePoint = {
 export type ScaleReport = { points: ScalePoint[]; notes?: string[] };
 export type RcaEvalReport = {
   cases: number;
+  split?: "tune" | "test" | string | null;
   results: EvalAggregate[];
   /** approach -> fault type -> [correct, total] */
   by_fault: Record<string, Record<string, [number, number]>>;
+  by_fault_top3?: Record<string, Record<string, [number, number]>>;
   cost?: Record<string, EvalCost>;
   notes?: string[];
 };

@@ -1,6 +1,6 @@
 import pytest
 
-from app.eval.rcaeval import case_names, load_case, online_boutique
+from app.eval.rcaeval import case_names, load_case, online_boutique, split_case_names
 
 pa = pytest.importorskip("pyarrow")
 
@@ -8,6 +8,13 @@ pa = pytest.importorskip("pyarrow")
 def test_case_names_cover_five_services_and_faults() -> None:
     names = case_names()
     assert len(names) == 25 and "re1ob_adservice_delay_1" in names
+
+
+def test_frozen_split_has_disjoint_tune_and_test_cases() -> None:
+    tune = set(split_case_names("tune"))
+    test = set(split_case_names("test"))
+    assert len(tune) == 75 and len(test) == 265
+    assert tune.isdisjoint(test)
 
 
 def test_load_case_maps_metrics_and_subsamples(tmp_path) -> None:  # type: ignore[no-untyped-def]

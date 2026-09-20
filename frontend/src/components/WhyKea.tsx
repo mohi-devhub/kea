@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ChartCard, ColumnChart, HBarChart, LineChart, SERIES, type BarGroup } from "@/components/charts";
+import { ChartCard, ColumnChart, DataTable, HBarChart, LineChart, SERIES, type BarGroup } from "@/components/charts";
 import { Panel, Segmented } from "@/components/ui";
 import type { EvalAggregate, EvalReport } from "@/lib/types";
 
 const APPROACHES = ["engine", "llm_raw", "llm_raw_topology"];
+const REAL_APPROACHES = ["engine", "engine_v2", "hybrid_rerank", "learned", "llm_raw", "llm_raw_topology"];
 const SCENARIO_LABEL: Record<string, string> = {
   s1_bad_deploy_payment: "S1 Bad deploy",
   s2_postgres_degradation: "S2 Database fault",
   s3_red_herring_deploy: "S3 Decoy deploy",
   s4_benign_deploy: "S4 Healthy deploy",
 };
-const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss" };
+const FAULT_LABEL: Record<string, string> = { cpu: "CPU hog", mem: "Memory leak", disk: "Disk stress", delay: "Network delay", loss: "Packet loss", socket: "Socket fault" };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const fmtMs = (ms: number | null) => (ms == null ? "n/a" : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
 const find = (rows: EvalAggregate[], approach: string, scenario: string) => rows.find((r) => r.approach === approach && r.scenario === scenario);
@@ -23,6 +24,7 @@ const frac = (m: Frac) => (m.n ? `${m.k}/${m.n}` : "not run");
 const barOf = (approach: string, m: Frac) => ({ series: approach, value: m.n ? m.k / m.n : 0, text: frac(m), detail: `${SERIES[approach].label}: ${m.k} of ${m.n} (${m.n ? pct(m.k / m.n) : "n/a"})` });
 
 const SHORT: Record<string, string> = { engine: "kea engine", llm_raw: "LLM raw", llm_raw_topology: "LLM topology" };
+const REAL_SHORT: Record<string, string> = { engine: "Current engine", engine_v2: "Engine v2", hybrid_rerank: "Hybrid rerank", learned: "Learned", llm_raw: "LLM raw", llm_raw_topology: "LLM + topology" };
 const isS4 = (s: string) => s.startsWith("s4");
 
 /** One table, kea highlighted, the headline numbers in a single glance. */
@@ -44,7 +46,7 @@ export function CompareTable({ report }: { report: EvalReport }) {
     { name: "Median latency", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? fmtMs(cost[a].median_latency_ms) : null])) },
     { name: "Tokens", sub: "Per analysis", cells: Object.fromEntries(APPROACHES.map((a) => [a, cost?.[a] ? (cost[a].median_tokens ?? 0).toLocaleString() : null])) },
   ];
-  if (report.rcaeval) data.push({ name: "Root cause found", sub: "Real data, RCAEval, 25 cases", loses: true, cells: Object.fromEntries(APPROACHES.map((a) => [a, frac(rca(a))])) });
+  if (report.rcaeval) data.push({ name: "Root cause found", sub: `Real data, RCAEval ${report.rcaeval.split ?? ""} split`, loses: true, cells: Object.fromEntries(REAL_APPROACHES.map((a) => [a, frac(rca(a))])) });
   return (
     <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
       <table className="w-full min-w-[680px] border-collapse text-left">
@@ -111,17 +113,28 @@ export function ResultCharts({ report }: { report: EvalReport }) {
   const tokens = costGroups((c) => c.median_tokens ?? 0).map((g) => ({ ...g, bars: g.bars.map((b) => ({ ...b, text: b.value.toLocaleString() })) }));
   const lines = (pick: (p: NonNullable<typeof scale>["points"][number]) => number | null) =>
     APPROACHES.map((a) => ({ series: a, points: (scale?.points ?? []).filter((p) => p.approach === a && pick(p) != null).map((p) => ({ x: p.services, y: pick(p) as number })) })).filter((l) => l.points.length);
-  const faults = Object.keys(FAULT_LABEL);
+  const faults = rca
+    ? [...new Set(Object.values(rca.by_fault).flatMap((faultsForApproach) => Object.keys(faultsForApproach)))]
+    : [];
   const rcaGroups: BarGroup[] = rca
-    ? [{ label: "All faults", sub: `${rca.cases} cases`, fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f], sub: "5 cases", fs: [f] }))].map(({ label, sub, fs }) => ({
+    ? [{ label: "All faults", sub: `${rca.cases} cases`, fs: faults }, ...faults.map((f) => ({ label: FAULT_LABEL[f] ?? f, sub: "all available cases", fs: [f] }))].map(({ label, sub, fs }) => ({
         label,
         sub,
-        bars: APPROACHES.filter((a) => rca.by_fault[a]).map((a) => {
+        bars: REAL_APPROACHES.filter((a) => rca.by_fault[a]).map((a) => {
           const cells = fs.map((f) => rca.by_fault[a]?.[f] ?? [0, 0]);
           return barOf(a, { k: cells.reduce((t, c) => t + c[0], 0), n: cells.reduce((t, c) => t + c[1], 0) });
         }),
       }))
     : [];
+  const realOverall = (approach: string, top3 = false): Frac => {
+    const source = top3 ? rca?.by_fault_top3?.[approach] : rca?.by_fault[approach];
+    return Object.values(source ?? {}).reduce((total, [k, n]) => ({ k: total.k + k, n: total.n + n }), { k: 0, n: 0 });
+  };
+  const realTableRows = REAL_APPROACHES.map((approach) => [
+    REAL_SHORT[approach] ?? approach,
+    frac(realOverall(approach)),
+    frac(realOverall(approach, true)),
+  ]);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -161,8 +174,11 @@ export function ResultCharts({ report }: { report: EvalReport }) {
         </ChartCard>
       )}
       {tab === "real" && rca && (
-        <ChartCard title="Real fault injections" subtitle="RCAEval RE1-OB, Online Boutique" legend={APPROACHES} caption="Where kea loses. One case per service and fault type, metrics only, with the metric mapping fixed before the first run. CPU, disk and network counters are not in the engine's metric set. This tests the service-fault path only, and 25 cases is a small sample.">
-          <div className="mx-auto max-w-[760px]"><HBarChart groups={rcaGroups} xMax={1} xTicks={[0, 0.25, 0.5, 0.75, 1]} xFormat={pct} xTitle="Top-1 correct" table={table} /></div>
+        <ChartCard title="Real fault injections" subtitle={`RCAEval ${rca.split ?? "custom"} split · ${rca.cases} cases`} legend={REAL_APPROACHES} caption="Amber is the current engine. Engine v2 includes the real-telemetry detector and noisy-data ranking changes; hybrid rerank and learned are evaluated separately. These are held-out numbers when the TEST split is selected. RCAEval has no deployment events, so this tests service-fault attribution only. If kea remains behind the LLM baselines, this panel says so rather than hiding it.">
+          <div className="space-y-6">
+            <DataTable head={["Approach", "Top-1", "Top-3"]} rows={realTableRows} />
+            <div className="mx-auto max-w-[760px]"><HBarChart groups={rcaGroups} xMax={1} xTicks={[0, 0.25, 0.5, 0.75, 1]} xFormat={pct} xTitle="Top-1 correct" table={table} /></div>
+          </div>
         </ChartCard>
       )}
     </div>
@@ -227,4 +243,3 @@ export function ScenarioGrid({ rows }: { rows: EvalAggregate[] }) {
     </Panel>
   );
 }
-

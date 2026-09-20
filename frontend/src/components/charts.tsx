@@ -7,6 +7,9 @@ export const SERIES: Record<string, { label: string; color: string }> = {
   llm_raw: { label: "LLM, raw telemetry", color: "var(--f2)" },
   llm_raw_topology: { label: "LLM + topology", color: "var(--f3)" },
   hybrid: { label: "Engine + LLM explainer", color: "var(--f4)" },
+  engine_v2: { label: "Engine v2", color: "var(--f5)" },
+  hybrid_rerank: { label: "Hybrid rerank", color: "var(--f6)" },
+  learned: { label: "Learned rerank", color: "var(--f7)" },
 };
 export const seriesOf = (key: string) => SERIES[key] ?? { label: key, color: "var(--text-2)" };
 

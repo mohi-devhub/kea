@@ -2,188 +2,204 @@
 
 # kea
 
-**A real-time incident causality engine. A deterministic engine finds the root cause, an LLM explains it, a benchmark checks both.**
+**A real-time incident causality engine.**
+A deterministic engine finds the root cause. An LLM explains it. A benchmark checks both.
 
 ![Python 3.13](https://img.shields.io/badge/python-3.13-blue)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black)
+![Track](https://img.shields.io/badge/track-Next--Gen%20Productivity%20%26%20Automation-2563eb)
 
 </div>
 
-Hackathon track: Next-Gen Productivity & Automation.
+---
 
-## What it does
+## Overview
 
-When production breaks, dashboards show many red services and an on-call engineer has to work out what changed, what failed first, and how it spread. kea automates that first hour. It watches a stream of metric and deployment events, builds a live service dependency graph, and ranks root-cause candidates. Each candidate carries a per-factor score. Candidates it rejected come with a reason code, for example "deployment on `notifications` rejected: no dependency path to the affected services".
+When production breaks, dashboards show a dozen red services and the on-call engineer has to work out what changed, what failed first, and how the failure spread. **kea automates that first hour.**
 
-The ranking is done by a deterministic engine: pure Python, no LLM, no network. A separate investigation agent uses read-only tools to write an explanation that cites evidence ids. It explains what the engine found and never re-ranks. A benchmark runs the engine and LLM-only baselines on the same events. A human-gated fix flow lets an agent propose a code fix, which a person approves by exact patch hash.
+It watches a stream of metric and deployment events, builds a live service dependency graph, and ranks root-cause candidates. Every candidate carries a per-factor score, and every candidate it rejected carries a reason code, for example: *"deployment on `notifications` rejected: no dependency path to the affected services"*.
 
-**The 30-second pitch.** Most AI SRE tools ask an LLM to guess the root cause from raw telemetry. kea finds candidates deterministically from a causal graph, lets the LLM explain rather than decide, and measures the result against LLM-only baselines, including on real data where it loses.
+The ranking comes from a **deterministic engine** (pure Python, no LLM, no network). An **investigation agent** then explains what the engine found, citing evidence ids, and never re-ranks. A **human-gated fix flow** lets a coding agent *propose* a code fix that a person approves by exact patch hash.
 
-## Why not just ask an LLM?
+## Problem Statement
 
-Measured on simulated incidents (tuning seeds 0-4, baseline model `gpt-5.6-terra`, small n, wide intervals):
+Incident response is slow because the evidence is scattered and the causal story has to be rebuilt by hand under pressure. Two things make it worse:
 
-| Question | kea engine | LLM only |
-|---|---|---|
-| Root-cause accuracy (S1-S3) | 5/5 per scenario | 5/5 per scenario (tie) |
-| False alarms on a healthy deploy (S4) | 0 of 5 | 4 of 5 (raw telemetry) |
-| Same answer on repeated runs | 100% | 87% agreement (S4, S2 with topology) |
-| Median latency, tokens per analysis | about 9 ms, 0 tokens | about 3.2-3.5 s, about 5.7k tokens |
+- **Red herrings.** A harmless deployment lands just before an unrelated failure, and the team rolls back the wrong thing.
+- **Untrustworthy AI.** Tools that ask an LLM to guess the root cause from raw telemetry are hard to audit, give different answers on different runs, and raise false alarms on healthy changes.
 
-The engine does not beat the LLM on root-cause accuracy here. Its measured edge is false alarms, determinism, cost, speed and auditable evidence.
+## Solution
 
-**The unflattering result.** On real telemetry from RCAEval RE1-OB (Online Boutique), 25 cases (one per service and fault type, metrics only), the engine got 4/25 top-1 and the LLM baselines got 14/25. The engine was worst on network delay and packet loss (0/5 each). This replay only exercises the service-fault path.
-
-What is being done about it, all on tuning data: new metric types for CPU, network delay and packet loss; robust median/MAD anomaly thresholds; a constrained LLM reranker that may only permute the engine's top three candidates; and a small deterministic learned reranker. A frozen TEST split of 265 further cases is scored without tuning on it. Its interim results (engine 95/265, learned reranker 130/265 top-1, LLM rows unscored) do not support a claim that kea beats LLM accuracy.
-
-**Caveat.** The simulated numbers above are tuning-seed numbers. The final held-out run (seeds 100-109) has not been done, and the LLM baselines' real-data rows are not yet scored on the frozen split. A "LLM degrades at scale" claim was tested (7 to 63 services) and not supported: LLM accuracy held up, but its token cost grew linearly and engine latency grew from 8 ms to 367 ms.
-
-## Architecture
+kea splits the job so that each part does what it is good at.
 
 ![kea high-level design](assets/architecture.png)
 
-- **Simulator** generates seeded metric and deployment events from scenario YAMLs and a `topology.yaml`, and publishes them to **Redpanda** (Kafka-compatible).
-- **Stream worker** consumes events, deduplicates them and feeds the **RCA engine**: anomaly detection, incident lifecycle, causal ranking over the dependency graph, ranked and rejected candidates with reason codes, blast radius and "what changed".
-- **Neo4j** holds the service dependency graph (caller to callee, blocking or not). The engine uses an in-memory copy; Neo4j serves blast-radius queries and graph views.
-- **REST API and WebSocket hub** (FastAPI) push run state and incident updates to the **Next.js dashboard**. The engine also produces a prediction of what recovery will fix, then verifies it.
-- **Investigation agent** takes the top candidate and evidence, calls read-only tools through the **LLM provider layer**, and returns a narrative with evidence citations. Ungrounded output triggers one repair attempt, then a template fallback.
-- **Eval harness** runs the engine and LLM-only baselines on the same events, with consistency, cost, scale and real-data (RCAEval) measurements, and feeds the `/eval` page.
-- **Fix flow** proposes a patch in a sandbox and waits for human approval. It is described below.
-
-## Key ideas
-
-- **Deterministic engine.** Same events in, same ranking out, with inspectable factor scores and rejected candidates.
-- **Predict, then verify.** The engine predicts which services recover after the fix and checks that against the outcome after Recover.
-- **Grounded explanations.** Every claim in the agent's narrative cites evidence ids that must exist. Failures fall back to a labelled template (`LIVE`, `REPLAYED` or `TEMPLATE` badge).
-- **Secret guard.** The LLM layer refuses to send any request containing a configured key, key-like tokens, private keys or home paths. Requests use `store=False`.
-- **Record/replay LLM cache.** `LLM_CACHE_MODE=record|replay` makes LLM runs reproducible and offline.
-- **Held-out ledger.** Every evaluation of the held-out seeds is logged in `eval_results/.heldout_log`.
-- **Human approval bound to the patch hash.** Approving a proposal approves one exact diff, nothing else.
-
-## Tech stack
-
-| Layer | Technology |
+| Stage | What happens |
 |---|---|
-| Engine, API, worker | Python 3.13, FastAPI, Pydantic, uv |
-| Streaming | Redpanda (Kafka API), aiokafka |
-| Graph | Neo4j 5.26 Community |
-| LLM | Provider layer; OpenAI Responses API adapter (Anthropic and Sarvam planned) |
-| Frontend | Next.js 16, React 19, TypeScript, types generated from OpenAPI |
-| Tooling | Docker Compose, pytest, ruff, strict mypy |
+| **Ingest** | A seeded simulator publishes metric and deployment events to **Redpanda** (Kafka API). A stream worker consumes and deduplicates them. |
+| **Decide** | The **RCA engine** detects anomalies, opens an incident, and ranks candidates over the dependency graph. It is pure and deterministic: the same events always give the same ranking. |
+| **Explain** | The **investigation agent** reads the engine's output through read-only tools and writes a narrative. Every claim cites an evidence id that must exist, or the output falls back to a labelled template. |
+| **Measure** | The **eval harness** runs the engine and LLM-only baselines on identical events, plus repeatability, cost, scale and real-data (RCAEval) checks. |
+| **Fix** | The **fix flow** proposes a patch in a sandbox and waits for a human to approve it by diff hash. |
 
-## Quick start
+### Why not just ask an LLM?
 
-Prerequisites: Docker with about 8 GB of memory, Python 3.13, [uv](https://docs.astral.sh/uv/), Node and pnpm.
+Measured on simulated incidents (tuning seeds 0-4, baseline model `gpt-5.6-terra`, small samples, wide intervals):
+
+| Question | kea engine | LLM only |
+|---|---|---|
+| Finds the root cause (S1 to S3) | 5/5 per scenario | 5/5 per scenario (a tie) |
+| False alarms on a healthy deploy (S4) | 0 of 5 | 4 of 5 |
+| Gives the same answer when run again | 100% | 87% on S4 and on S2 with topology |
+| Median time and tokens per analysis | about 9 ms, 0 tokens | about 3.5 s, about 5.7k tokens |
+
+The engine does **not** beat an LLM on root-cause accuracy here. Its measured edge is false alarms, repeatability, cost, speed, and evidence you can audit.
+
+## Features
+
+- **Deterministic root-cause ranking** with per-factor scores, rejected candidates and reason codes.
+- **Live topology graph** with service health, blast radius and a causal timeline.
+- **Predict, then verify.** Before Recover the engine predicts which services will heal; afterwards it checks the prediction against the outcome.
+- **Grounded investigation agent** with a bounded tool loop, evidence-cited steps, a grounding check, one repair attempt and a template fallback. Badges show `LIVE`, `REPLAYED` or `TEMPLATE`.
+- **Human-gated fix flow.** A coding agent proposes a fix in a throwaway sandbox. The reviewer sees the diff, an explanation, and tests going from red to green, then approves by exact diff hash.
+- **Benchmark page** (`/eval`) comparing the engine with LLM-only baselines, with confidence intervals, repeatability, cost, a scale sweep, and a replay of real fault injections.
+- **Safety by construction.** A secret guard blocks unsafe outbound LLM requests, a held-out ledger records every held-out evaluation, and LLM runs can be recorded and replayed offline.
+
+## Tech Stack
+
+- **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, zustand, `@xyflow/react`; API types generated from OpenAPI.
+- **Backend:** Python 3.13, FastAPI, Pydantic v2, aiokafka, managed with uv.
+- **Database:** Neo4j 5.26 Community (service dependency graph). Run state is held in memory.
+- **APIs / Services:** Redpanda (Kafka API), OpenAI Responses API, Codex CLI (fix backend).
+- **Hosting / Deployment:** Docker Compose on a local machine. No hosted deployment.
+- **Other Tools:** pytest, ruff, strict mypy, Playwright (browser checks), RCAEval (real fault-injection data).
+
+## Codex / OpenAI Usage
+
+**In the product**
+
+- **OpenAI API.** The investigation agent and the LLM-only baselines call the OpenAI Responses API (`gpt-5.6-terra`). The LLM only explains; the engine decides.
+- **Codex CLI as the fix backend.** The fix flow runs `codex exec` non-interactively inside the sandbox, with a cleaned environment and a workspace-write sandbox. If the CLI is unavailable it falls back to an OpenAI tool loop. On the seeded bug, Codex CLI produced a passing fix that the reviewer then approves by hash.
+
+**During the build**
+
+- **Codex** implemented the engine milestones, the streaming pipeline, the investigation agent, the eval harness, and the real-data experiments, working from written specs with tests as the acceptance criteria.
+- **Claude Code** was used for planning and specs, reviewing and verifying each milestone, the dashboard and eval UI, the fix flow, and this README.
+- Every milestone was reviewed by a human before it was merged.
+
+## Demo
+
+### Live Demo
+
+Not hosted. kea runs locally with Docker Compose (see [How to Run Locally](#how-to-run-locally)).
+
+### Demo / Pitch Video
+
+_Add the demo video link here._
+
+## Screenshots
+
+| Live incident dashboard | Investigation |
+|---|---|
+| ![Dashboard](assets/screenshots/dashboard.png) | ![Investigation](assets/screenshots/investigation.png) |
+
+| Fix proposal and approval | Benchmark |
+|---|---|
+| ![Fix flow](assets/screenshots/fix-flow.png) | ![Eval](assets/screenshots/eval.png) |
+
+## How to Run Locally
+
+**Prerequisites:** Docker with about 8 GB of memory, Python 3.13, [uv](https://docs.astral.sh/uv/), Node.js and pnpm.
 
 ```bash
-cp .env.example .env     # then set NEO4J_PASSWORD to any local password
-make up                  # Redpanda, Neo4j, API, worker, frontend
+git clone https://github.com/mohi-devhub/kea.git
+cd kea
+cp .env.example .env      # set NEO4J_PASSWORD to any local password
+make up                   # Redpanda, Neo4j, API, worker, frontend
 ```
-
-`.env.example` contains placeholders only. The default `LLM_PROVIDER=template` needs no API key and produces template explanations. To use a real provider, set `LLM_PROVIDER`, `LLM_MODEL` and the matching `*_API_KEY` in your local `.env` (git-ignored). With a provider set, each incident triggers one paid call unless `AUTO_INVESTIGATE=false`.
 
 | Service | URL |
 |---|---|
 | Dashboard | http://localhost:3000 |
 | API docs | http://localhost:8000/docs |
 | Neo4j browser | http://localhost:7474 |
-| Redpanda console (optional) | http://localhost:8080 via `docker compose --profile tools up -d redpanda-console` |
+| Redpanda console (optional) | `docker compose --profile tools up -d redpanda-console`, then http://localhost:8080 |
 
-Open the dashboard, pick a scenario (S1 to S4), press Start, and press Recover when the incident is open.
+Open the dashboard, choose a scenario, press **Start**, and press **Recover** once the incident opens. In the incident panel, open the **Fix** tab and press **Propose a fix**.
+
+**LLM providers.** `.env.example` holds placeholders only. The default `LLM_PROVIDER=template` needs no key and shows template explanations. To use OpenAI, set `LLM_PROVIDER=openai`, `LLM_MODEL` and `OPENAI_API_KEY` in your local, git-ignored `.env`. The fix flow needs a provider (or the Codex CLI on your `PATH`, when the API runs on the host).
 
 | Command | What it does |
 |---|---|
 | `make test` | Fast unit tests, no infrastructure needed |
-| `make test-int` | Integration tests (needs Redpanda and Neo4j; stops api, worker, frontend) |
+| `make test-int` | Integration tests (needs Redpanda and Neo4j) |
 | `make scenarios` | Batch S1-S4 acceptance matrix on tuning seeds |
-| `make demo-check` | End-to-end smoke of S1-S4 through the running stack (run `make up` first) |
-| `make eval` | Benchmark report; falls back to templates if no LLM key is configured |
-| `make types` | Export OpenAPI and regenerate frontend types |
+| `make demo-check` | End-to-end smoke test of S1-S4 through the running stack |
+| `make eval` | Benchmark report (falls back to templates without a key) |
+| `make types` | Export OpenAPI and regenerate the frontend types |
 | `make lint` | ruff, mypy, eslint, typecheck |
 | `make down` / `make reset` | Stop the stack / wipe volumes and reseed |
 
-## Scenarios
+### Scenarios
 
-| ID | Name | What happens | Correct answer |
-|---|---|---|---|
-| S1 | `s1_bad_deploy_payment` | A payment deployment causes a cascading checkout outage | Deployment `dep-182` on `payment` |
-| S2 | `s2_postgres_degradation` | A database fault, obscured by an earlier payment deployment | Fault on `postgres` (the deployment is a decoy) |
-| S3 | `s3_red_herring_deploy` | An unrelated `notifications` deployment precedes a cache failure | Fault on `redis`; the deployment must be rejected |
-| S4 | `s4_benign_deploy` | A harmless change and one metric spike | No incident should open |
+| ID | What happens | Correct answer |
+|---|---|---|
+| S1 `s1_bad_deploy_payment` | A payment deployment causes a cascading checkout outage | Deployment `dep-182` on `payment` |
+| S2 `s2_postgres_degradation` | A database fault, hidden behind an earlier payment deployment | Fault on `postgres`; the deployment is a decoy |
+| S3 `s3_red_herring_deploy` | An unrelated `notifications` deployment precedes a cache failure | Fault on `redis`; the deployment must be rejected |
+| S4 `s4_benign_deploy` | A harmless change and one metric spike | No incident should open |
 
-## Fix flow
-
-The fix flow is built at the propose-only level. Applying a patch is deliberately disabled in this build.
-
-**Design** (`backend/app/fix/`). It is offered when the top candidate is a deployment whose commit exists in a small generated demo repo.
-
-1. A throwaway sandbox clone of the demo repo is created; nothing is written outside it.
-2. Tests run in the sandbox before the change (expected failing).
-3. A coding agent edits files in the sandbox only, and may not modify existing tests. The diff is hashed with SHA-256.
-4. Tests run again after the change, and a short explanation that cites incident evidence is generated.
-5. A human reviews the diff, explanation and test results, and approves by sending the exact diff hash. A mismatched hash is rejected, and only a green, test-preserving proposal can be approved.
-
-Endpoints (from the fix flow spec): `POST /incidents/{id}/fix-proposals`, `GET /fix-proposals/{id}`, `POST /fix-proposals/{id}/approve` (body `{diff_hash, approver}`), `POST /fix-proposals/{id}/reject`, `POST /fix-proposals/{id}/regenerate`. Progress arrives as a WebSocket `fix.state` message.
-
-**Enabled now:** propose, verify and review. **Apply is visibly disabled.** This feature is under active development, so the details may change.
-
-### Future expansion
-
-- Apply the approved diff to a branch, after re-checking the hash.
-- Draft PR through the local adapter (a markdown draft, no network), then a GitHub draft PR.
-- Automatic re-verification after the fix is applied.
-- More incident types beyond code-change root causes.
-- Codex CLI as the primary fix backend, with the LLM tool loop as fallback.
-- Anthropic and Sarvam provider adapters.
-
-## Evaluation methodology
-
-- Engine weights and thresholds are tuned only on tuning seeds 0-4. Reported final numbers use held-out seeds 100-109.
-- Every evaluation of the held-out seeds is recorded in `eval_results/.heldout_log`. If a held-out result ever forces a code change, a fresh held-out set is used.
-- Baselines get the same events and no engine output (no anomalies, scores, scenario names or ground truth). Baseline code must not import the simulator.
-- Confidence intervals are Wilson intervals. Runs that did not produce an answer (`not_run`, provider error) are excluded from the denominator and shown as not run. Malformed answers count as wrong.
-- Baseline prompts are written as a competent SRE would write them and are not tuned to make baselines fail. An earlier version hid part of the metric window from the baselines. That was a fairness bug and was fixed.
-- The hybrid's root cause equals the engine's by construction, so its accuracy is not reported as an independent result.
-
-## Repo layout
+### Repo layout
 
 ```
-backend/
-  app/engine/      deterministic causality engine (no LLM)
-  app/simulator/   seeded scenario event generator and publisher
-  app/stream/      Kafka consumer and worker
-  app/graph/       Neo4j client and topology seeding
-  app/api/         run store and API views
-  app/agent/       investigation agent, tools, grounding, templates
-  app/llm/         provider layer, cache, secret guard, OpenAI adapter
-  app/eval/        harness, baselines, grading, metrics
-  app/models/      Pydantic contract models
-  scripts/         scenarios, demo check, fixtures, OpenAPI export
-  tests/           unit and integration tests
-frontend/          Next.js dashboard, /eval and /timeline pages
-scenarios/         S1-S4 YAMLs and topology.yaml
-eval_results/      held-out ledger (generated reports are git-ignored)
-assets/            architecture diagram
+backend/app/engine/      deterministic causality engine (no LLM)
+backend/app/simulator/   seeded scenario events and publisher
+backend/app/stream/      Kafka consumer and worker
+backend/app/graph/       Neo4j client and topology seeding
+backend/app/agent/       investigation agent, tools, grounding, templates
+backend/app/fix/         fix flow: sandbox, backends, approval gate
+backend/app/llm/         provider layer, cache, secret guard, OpenAI adapter
+backend/app/eval/        harness, baselines, grading, metrics
+frontend/                Next.js dashboard, /eval and /timeline pages
+scenarios/               S1-S4 YAMLs and topology.yaml
+assets/                  architecture diagram and screenshots
 ```
 
-`backend/app/fix/` is the fix flow package, added as part of the fix flow work.
+## Additional Notes
 
-## Limitations
+### The fix flow: propose only, and where it goes next
 
-- All incidents are simulated except the RCAEval replay. The engine is a heuristic, and its score is not a probability.
-- Real-data accuracy is low (4/25 on the tuning slice, see above). It is not evidence that kea beats LLMs on accuracy.
-- Simulated results use 5 tuning seeds and one LLM (`gpt-5.6-terra`); intervals are wide. The final held-out run is pending.
-- Only the OpenAI adapter exists; other providers fall back to templates.
-- One incident per run; the incident id is fixed. Neo4j is a single node, and it would not be the choice at production scale.
-- The fix flow proposes only; the demo repo is a small generated one.
+**What is enabled now.** For an incident whose root cause is a deployment, kea:
 
-## Roadmap
+1. clones a demo repo into a throwaway sandbox (nothing outside the sandbox is written);
+2. runs the tests, which fail on the bad commit;
+3. lets a coding agent edit source files in the sandbox only (existing tests may not be touched);
+4. hashes the exact diff (SHA-256), reruns the tests, and writes a short explanation that cites incident evidence;
+5. shows the diff, explanation and before/after test results, and waits for a human.
 
-1. Final held-out evaluation and publication of real-data results.
-2. Finish the fix flow, then the expansion list above.
-3. More scenarios (concurrent deployments) and real telemetry ingestion via `POST /events`.
-4. More provider adapters.
+The human approves by sending the exact diff hash. A wrong hash is refused, a red or test-weakening proposal cannot be approved, and approving twice does nothing new.
 
-## How this was built
+**Approval records; it does not apply.** In this build, approving stores who approved which hash, and stops. No branch, commit or pull request is created, and the UI says so. The code path that would do it is reserved in `backend/app/fix/apply.py`, which currently only raises "not enabled".
 
-Built with Codex and Claude Code from a written spec, with tests as the acceptance criteria and a human reviewing each milestone. The build record is kept in the project's `docs/BUILD_LOG.md` (not committed).
+**Future expansion**
+
+- Apply the approved diff to a new branch after re-checking its hash, and commit it with `Approved-by` and `Proposed-by` trailers.
+- Draft a pull request: a local markdown draft first, then a GitHub draft PR with the token read from the environment only.
+- Re-verify automatically after applying, and roll the branch back if verification fails.
+- Support incident types beyond code-change root causes (configuration, scaling, dependency faults).
+- Make Codex CLI the default backend inside the container, and add Anthropic and Sarvam provider adapters.
+- Use approved and rejected proposals as feedback for the engine's ranking, behind the same approval and overfitting safeguards.
+
+### How results are measured
+
+- Engine settings are tuned only on tuning seeds 0-4. Final numbers use held-out seeds 100-109, and every held-out evaluation is logged in `eval_results/.heldout_log`.
+- Baselines receive the same events and none of the engine's output. Their prompts are written as a competent engineer would write them and are not tuned to make them fail.
+- Intervals are 95% Wilson intervals. Runs that produced no answer are excluded and shown as not run; malformed answers count as wrong.
+
+### Limitations
+
+- **Real-data accuracy is low.** On 25 real Online Boutique fault injections (RCAEval RE1-OB), the engine found the root cause in 4 cases and the LLM baselines in 14. The engine was built on clean simulated telemetry and sees only latency, error rate, request rate and memory. This replay covers the service-fault path only. Work to improve it (more metric types, noise-robust thresholds, an LLM reranker over the engine's top three) is in progress on a separate branch and is not part of this build.
+- **Simulated results are small-sample.** They use 5 tuning seeds and one LLM. The final held-out run has not been done yet.
+- An LLM does not degrade with topology size in our sweep (7 to 63 services); its cost grows instead, from about 5k to about 46k tokens per analysis.
+- Only the OpenAI adapter exists. Neo4j is a single node and one incident is handled per run.
+- The fix flow works on a small generated demo repo, not on arbitrary repositories.

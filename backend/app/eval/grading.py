@@ -138,3 +138,45 @@ def grade_hybrid(
         steps=len(result.trace),
         mode=result.mode,
     )
+
+
+def grade_rerank(
+    ordered_candidate_ids: list[str],
+    original_candidate_ids: list[str],
+    incident: Incident | None,
+    scenario: Scenario,
+    *,
+    mode: str,
+    grounding_pass: bool | None,
+    fallback: bool,
+) -> Grade:
+    candidates = incident.candidates if incident else []
+    by_id = {candidate.candidate_id: candidate for candidate in candidates}
+    ordered = [
+        by_id[candidate_id] for candidate_id in ordered_candidate_ids if candidate_id in by_id
+    ]
+    grade = _base_grade(
+        detected=incident is not None,
+        hypotheses=ordered,
+        truth=scenario.ground_truth,
+    )
+    rejected = {
+        item.candidate_id: item.reason_code
+        for item in (incident.rejected_candidates if incident else [])
+    }
+    expected_rejected = scenario.ground_truth.must_reject
+    decoys_ok = all(
+        rejected.get(item.candidate_id) == item.reason_code for item in expected_rejected
+    )
+    return grade.model_copy(
+        update={
+            "decoys_rejected_correctly": decoys_ok,
+            "grounding_pass": grounding_pass,
+            "mode": mode,
+            "details": {
+                "original_candidate_ids": original_candidate_ids,
+                "reranked_candidate_ids": ordered_candidate_ids,
+                "fallback": fallback,
+            },
+        }
+    )

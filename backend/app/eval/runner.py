@@ -14,10 +14,17 @@ from app.agent.runner import InvestigationAgent
 from app.config import ROOT, Settings, get_settings
 from app.engine import EngineState, InMemoryTopology, run_batch
 from app.engine.config import EngineConfig
-from app.eval.baselines.parser import parse_output
-from app.eval.baselines.prompts import BASELINE_PROMPT_VERSION, SYSTEM_PROMPT, build_prompt
+from app.eval.baselines.parser import parse_output, parse_rerank_output
+from app.eval.baselines.prompts import (
+    BASELINE_PROMPT_VERSION,
+    RERANK_PROMPT_VERSION,
+    RERANK_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_prompt,
+    build_rerank_prompt,
+)
 from app.eval.baselines.render import render_baseline_input
-from app.eval.grading import grade_baseline, grade_engine, grade_hybrid
+from app.eval.grading import grade_baseline, grade_engine, grade_hybrid, grade_rerank
 from app.eval.metrics import aggregate_records, cost_summary
 from app.eval.models import BaselineAnswer, Grade, RunRecord, RunStatus
 from app.graph.client import load_topology
@@ -135,6 +142,10 @@ class EvalRunner:
                     total_chars += len(
                         json.dumps(incident.model_dump(mode="json") if incident else {})
                     )
+                if "hybrid_rerank" in approaches:
+                    incident = run_batch(events, InMemoryTopology(self.topology)).incident
+                    candidates = _rerank_candidates(incident)
+                    total_chars += len(RERANK_SYSTEM_PROMPT) + len(build_rerank_prompt(candidates))
         return max(1, round(total_chars / 4)) if total_chars else 0
 
     async def run(
@@ -154,6 +165,8 @@ class EvalRunner:
         prompt_dir: dict[str, str] = {
             "baseline_prompt_version": BASELINE_PROMPT_VERSION,
             "baseline_system.txt": SYSTEM_PROMPT,
+            "rerank_prompt_version": RERANK_PROMPT_VERSION,
+            "rerank_system.txt": RERANK_SYSTEM_PROMPT,
         }
         for scenario in scenarios:
             for seed in seeds:
@@ -182,6 +195,16 @@ class EvalRunner:
                 if "hybrid" in approaches and (hybrid_seeds is None or seed in hybrid_seeds):
                     records.append(
                         await self._hybrid_record(
+                            scenario,
+                            seed,
+                            engine_result.incident,
+                            engine_hash,
+                            agent_provider,
+                        )
+                    )
+                if "hybrid_rerank" in approaches:
+                    records.append(
+                        await self._hybrid_rerank_record(
                             scenario,
                             seed,
                             engine_result.incident,
@@ -230,6 +253,7 @@ class EvalRunner:
                 "sampling": "provider defaults; temperature is not sent to reasoning models",
                 "max_output_tokens": self.settings.llm_max_output_tokens,
                 "prompt_version": BASELINE_PROMPT_VERSION,
+                "rerank_prompt_version": RERANK_PROMPT_VERSION,
                 "heldout_eval_count": _heldout_count(ROOT / "eval_results")
                 + (1 if seeds == DEFAULT_HELDOUT else 0),
             },
@@ -250,6 +274,156 @@ class EvalRunner:
             "prompts": prompt_dir,
         }
         return report, records
+
+    async def _hybrid_rerank_record(
+        self,
+        scenario: Any,
+        seed: int,
+        incident: Incident | None,
+        input_hash: str,
+        provider: LLMProvider | None,
+    ) -> RunRecord:
+        """Reorder only the engine's top candidates, with a deterministic fallback."""
+        original = (
+            [candidate.candidate_id for candidate in incident.candidates[:3]] if incident else []
+        )
+        candidate_payload = _rerank_candidates(incident)
+        prompt = build_rerank_prompt(candidate_payload)
+        request_hash = _sha256_json({"engine": input_hash, "prompt": prompt})
+        if incident is None:
+            grade = grade_rerank(
+                [],
+                original,
+                incident,
+                scenario,
+                mode="ENGINE_NO_INCIDENT",
+                grounding_pass=None,
+                fallback=False,
+            )
+            return RunRecord(
+                approach="hybrid_rerank",
+                scenario=scenario.id,
+                seed=seed,
+                run_index=0,
+                input_sha256=request_hash,
+                parsed_output={
+                    "incident_detected": False,
+                    "original_candidate_ids": [],
+                    "reranked_candidate_ids": [],
+                    "fallback": False,
+                },
+                grade=grade,
+            )
+
+        if provider is None:
+            grade = grade_rerank(
+                original,
+                original,
+                incident,
+                scenario,
+                mode="ENGINE_FALLBACK",
+                grounding_pass=None,
+                fallback=True,
+            )
+            return RunRecord(
+                approach="hybrid_rerank",
+                scenario=scenario.id,
+                seed=seed,
+                run_index=0,
+                input_sha256=request_hash,
+                parsed_output={
+                    "incident_detected": True,
+                    "original_candidate_ids": original,
+                    "reranked_candidate_ids": original,
+                    "fallback": True,
+                },
+                grade=grade,
+                error="LLM provider unavailable; engine order was retained",
+            )
+
+        request = LLMRequest(
+            model=provider.model,
+            messages=[
+                Message(role="system", content=RERANK_SYSTEM_PROMPT),
+                Message(role="user", content=prompt),
+            ],
+            temperature=0.0,
+            max_tokens=self.settings.llm_max_output_tokens,
+        )
+        started = time.perf_counter()
+        raw_output: str | None = None
+        usage: dict[str, int | float] = {}
+        parsed_output: dict[str, Any] = {
+            "incident_detected": True,
+            "original_candidate_ids": original,
+            "reranked_candidate_ids": original,
+            "fallback": True,
+        }
+        error: str | None = None
+        status: RunStatus = "ok"
+        try:
+            response = await provider.generate(request)
+            raw_output = response.message.content
+            usage = response.usage
+            answer = parse_rerank_output(raw_output)
+            ordered = answer.ordered_candidate_ids
+            valid_ids = set(original)
+            if len(ordered) != len(original) or set(ordered) != valid_ids:
+                raise ValueError("reranker must return an exact permutation of engine candidates")
+            evidence_ids = set(answer.evidence_ids)
+            known_evidence = {
+                evidence_id
+                for candidate in incident.candidates[:3]
+                for evidence_id in candidate.evidence_ids
+            }
+            if not evidence_ids <= known_evidence:
+                raise ValueError("reranker cited evidence outside the supplied candidates")
+            parsed_output = {
+                **answer.model_dump(mode="json"),
+                "incident_detected": True,
+                "original_candidate_ids": original,
+                "reranked_candidate_ids": ordered,
+                "fallback": False,
+            }
+            grade = grade_rerank(
+                ordered,
+                original,
+                incident,
+                scenario,
+                mode="LIVE",
+                grounding_pass=True,
+                fallback=False,
+            )
+        except Exception as exc:  # malformed output falls back to the deterministic order
+            error = type(exc).__name__ + ": " + str(exc)
+            status = (
+                "parse_error"
+                if isinstance(exc, (ValueError, json.JSONDecodeError))
+                else "provider_error"
+            )
+            grade = grade_rerank(
+                original,
+                original,
+                incident,
+                scenario,
+                mode="ENGINE_FALLBACK",
+                grounding_pass=False,
+                fallback=True,
+            )
+        return RunRecord(
+            approach="hybrid_rerank",
+            scenario=scenario.id,
+            seed=seed,
+            run_index=0,
+            input_sha256=request_hash,
+            raw_output=raw_output,
+            parsed_output=parsed_output,
+            grade=grade,
+            latency_ms=round((time.perf_counter() - started) * 1000, 1),
+            usage=usage,
+            error=error,
+            status=status,
+        )
 
     async def _baseline_record(
         self,
@@ -498,6 +672,34 @@ def _engine_output(result: Any) -> dict[str, Any]:
         "incident_open": result.incident_open,
         "incident": result.incident.model_dump(mode="json") if result.incident else None,
     }
+
+
+def _rerank_candidates(incident: Incident | None) -> list[dict[str, Any]]:
+    """Expose only top-three candidate fields and their own evidence to the reranker."""
+    if incident is None:
+        return []
+    evidence = {item.evidence_id: item for item in incident.evidence}
+    payload: list[dict[str, Any]] = []
+    for rank, candidate in enumerate(incident.candidates[:3], start=1):
+        payload.append(
+            {
+                "candidate_id": candidate.candidate_id,
+                "kind": candidate.kind,
+                "service": candidate.service,
+                "deployment_id": candidate.deployment_id,
+                "rank": rank,
+                "score": candidate.score,
+                "evidence": [
+                    {
+                        "evidence_id": evidence_id,
+                        "statement": evidence[evidence_id].statement,
+                    }
+                    for evidence_id in candidate.evidence_ids
+                    if evidence_id in evidence
+                ],
+            }
+        )
+    return payload
 
 
 def _engine_determinism(events: list[Any], topology: Any, result: Any) -> bool:

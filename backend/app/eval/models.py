@@ -21,6 +21,14 @@ class BaselineAnswer(BaseModel):
     explanation: str = ""
 
 
+class RerankAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ordered_candidate_ids: list[str] = Field(default_factory=list, max_length=3)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=12)
+    explanation: str = ""
+
+
 class Grade(BaseModel):
     top1_correct: bool
     top3_contains: bool

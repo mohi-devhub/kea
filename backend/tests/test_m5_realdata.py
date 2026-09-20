@@ -1,8 +1,17 @@
+import json
+
+import pytest
+
+from app.config import Settings
 from app.engine import InMemoryTopology, run_batch
 from app.engine.config import EngineConfig
 from app.eval.rcaeval import online_boutique
+from app.eval.runner import EvalRunner
+from app.graph.client import load_topology
+from app.llm.fake import FakeProvider, text_response
 from app.models.events import MetricEvent
-from app.simulator.generator import EPOCH_MS
+from app.simulator.generator import EPOCH_MS, generate
+from app.simulator.loader import load_scenarios
 
 
 def _series(metric: str, values: list[float]) -> list[MetricEvent]:
@@ -61,3 +70,86 @@ def test_step3_onset_uses_persistence_timestamp() -> None:
     )
 
     assert result.anomalies[0].onset_ts == EPOCH_MS + 17 * 5_000
+
+
+def _scenario(scenario_id: str):  # type: ignore[no-untyped-def]
+    settings = Settings(_env_file=None)
+    topology = load_topology(settings.topology_path)
+    scenario = next(
+        item
+        for item in load_scenarios(settings.topology_path.parent, topology)
+        if item.id == scenario_id
+    )
+    return scenario, topology
+
+
+@pytest.mark.asyncio
+async def test_step4_reranker_can_only_permute_engine_candidates() -> None:
+    scenario, topology = _scenario("s1_bad_deploy_payment")
+    events = generate(scenario, topology, 0)
+    engine_result = run_batch(events, InMemoryTopology(topology))
+    original = [item.candidate_id for item in engine_result.candidates[:3]]
+    provider = FakeProvider(
+        [
+            text_response(
+                json.dumps(
+                    {
+                        "ordered_candidate_ids": list(reversed(original)),
+                        "evidence_ids": engine_result.candidates[0].evidence_ids[:1],
+                        "explanation": "The supplied evidence supports this order.",
+                    }
+                )
+            )
+        ]
+    )
+    report, records = await EvalRunner(Settings(_env_file=None)).run(
+        scenarios=[scenario],
+        seeds=[0],
+        approaches=["hybrid_rerank"],
+        agent_provider=provider,
+    )
+    record = records[0]
+    assert record.status == "ok"
+    assert record.parsed_output["original_candidate_ids"] == original
+    assert record.parsed_output["reranked_candidate_ids"] == list(reversed(original))
+    assert record.grade.grounding_pass is True
+    assert len(provider.requests) == 1
+    assert scenario.id not in provider.requests[0].messages[1].content
+    assert report["cost"]["hybrid_rerank"]["total_tokens"] == 0
+
+
+@pytest.mark.asyncio
+async def test_step4_malformed_rerank_falls_back_to_engine_order() -> None:
+    scenario, _ = _scenario("s1_bad_deploy_payment")
+    provider = FakeProvider([text_response("not json")])
+    _, records = await EvalRunner(Settings(_env_file=None)).run(
+        scenarios=[scenario],
+        seeds=[0],
+        approaches=["hybrid_rerank"],
+        agent_provider=provider,
+    )
+    record = records[0]
+    assert record.status == "parse_error"
+    assert record.grade.top1_correct is True
+    assert (
+        record.grade.details["original_candidate_ids"]
+        == record.grade.details["reranked_candidate_ids"]
+    )
+    assert record.grade.details["fallback"] is True
+
+
+@pytest.mark.asyncio
+async def test_step4_no_incident_skips_provider_and_preserves_no_alarm() -> None:
+    scenario, _ = _scenario("s4_benign_deploy")
+    provider = FakeProvider([])
+    _, records = await EvalRunner(Settings(_env_file=None)).run(
+        scenarios=[scenario],
+        seeds=[0],
+        approaches=["hybrid_rerank"],
+        agent_provider=provider,
+    )
+    record = records[0]
+    assert not provider.requests
+    assert record.status == "ok"
+    assert record.grade.top1_correct is True
+    assert record.grade.false_alarm is False

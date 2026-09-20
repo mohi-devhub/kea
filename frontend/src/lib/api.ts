@@ -2,6 +2,8 @@ import { API_URL } from "@/lib/config";
 import type {
   BlastRadius,
   EvalReport,
+  FixCreated,
+  FixProposal,
   InvestigationResult,
   PredictionView,
   ScenarioInfo,
@@ -30,8 +32,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError("UNREACHABLE", "Can't reach the backend. Retrying...", 0);
   }
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: { code: string; message: string } } | null;
-    throw new ApiError(body?.error?.code ?? "ERROR", body?.error?.message ?? res.statusText, res.status);
+    // most routes wrap the reason in `error`; FastAPI's own aborts carry a bare `detail` string
+    const body = (await res.json().catch(() => null)) as
+      | { error?: { code: string; message: string }; detail?: string }
+      | null;
+    const message = body?.error?.message ?? (typeof body?.detail === "string" ? body.detail : null);
+    throw new ApiError(body?.error?.code ?? "ERROR", message ?? res.statusText, res.status);
   }
   return (await res.json()) as T;
 }
@@ -61,4 +67,21 @@ export const api = {
       error: string | null;
     }>(`/investigations/${investigationId}`),
   evalLatest: () => request<EvalReport>("/eval/results/latest"),
+  createFixProposal: (incidentId: string) =>
+    request<FixCreated>(`/incidents/${incidentId}/fix-proposals`, { method: "POST" }),
+  fixProposals: (incidentId: string) => request<FixProposal[]>(`/incidents/${incidentId}/fix-proposals`),
+  fixProposal: (proposalId: string) => request<FixProposal>(`/fix-proposals/${proposalId}`),
+  /** `diffHash` must be the exact string the server returned: approval is bound to it. */
+  approveFix: (proposalId: string, diffHash: string, approver: string) =>
+    request<FixProposal>(`/fix-proposals/${proposalId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ diff_hash: diffHash, approver }),
+    }),
+  rejectFix: (proposalId: string, reason?: string) =>
+    request<FixProposal>(`/fix-proposals/${proposalId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? null }),
+    }),
+  regenerateFix: (proposalId: string) =>
+    request<FixCreated>(`/fix-proposals/${proposalId}/regenerate`, { method: "POST" }),
 };

@@ -17,6 +17,24 @@ export type TopologyResponse = S["TopologyResponse"];
 export type ServiceNode = S["ServiceNode"];
 export type TopologyEdge = S["TopologyEdge"];
 export type Health = Incident["service_health"][string];
+export type FixProposal = S["FixProposal"];
+export type FixCreated = S["FixCreated"];
+export type FixState = FixProposal["state"];
+export type FixMode = NonNullable<FixProposal["mode"]>;
+export type FileChange = S["FileChange"];
+export type FixTraceEntry = S["FixTraceEntry"];
+export type TestRun = S["TestRun"];
+export type ApproveRequest = S["ApproveRequest"];
+export type RejectRequest = S["RejectRequest"];
+
+/** Payload of the `fix.state` WebSocket message: a signal to refetch the full proposal. */
+export type FixSignal = {
+  proposal_id: string;
+  incident_id: string;
+  state: FixState;
+  message: string | null;
+  mode: FixProposal["mode"];
+};
 
 export type MetricPoint = { service: string; metric: string; ts: number; value: number };
 
@@ -72,7 +90,8 @@ export type WsMessage =
   | Env<"prediction.made", Prediction>
   | Env<"prediction.verified", PredictionVerification>
   | Env<"agent.step", { investigation_id: string } & AgentTrace>
-  | Env<"agent.done", InvestigationResult | { investigation_id: string; status: "failed"; error: string }>;
+  | Env<"agent.done", InvestigationResult | { investigation_id: string; status: "failed"; error: string }>
+  | Env<"fix.state", FixSignal>;
 
 export type BlastRadius = {
   customer_facing_affected: string[];
